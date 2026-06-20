@@ -1,0 +1,45 @@
+export const typography = {
+  fontFamily: {
+    arabic: 'Scheherazade New',
+    urdu: 'Noto Nastaliq Urdu',
+    english: 'Inter',
+    heading: 'Inter',
+  },
+  fontSize: {
+    xs: 12,
+    sm: 13,
+    base: 14,
+    md: 15,
+    lg: 16,
+    xl: 18,
+    '2xl': 20,
+    '3xl': 24,
+    '4xl': 28,
+    arabic: {
+      sm: 20,
+      md: 28,
+      lg: 36,
+      xl: 44,
+    },
+  },
+  fontWeight: {
+    regular: '400' as const,
+    medium: '500' as const,
+    semibold: '600' as const,
+    bold: '700' as const,
+    extrabold: '800' as const,
+  },
+  lineHeight: {
+    tight: 1.2,
+    normal: 1.5,
+    relaxed: 1.8,
+    urdu: 2.2,
+    arabic: 2.2,
+  },
+  letterSpacing: {
+    tight: -0.5,
+    normal: 0,
+    wide: 0.5,
+    wider: 1.0,
+  },
+} as const;

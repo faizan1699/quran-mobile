@@ -1,0 +1,15 @@
+{
+  "extends": "@react-native/typescript-config/tsconfig.json",
+  "compilerOptions": {
+    "strict": true,
+    "skipLibCheck": true,
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["src/*"],
+      "@/tokens": ["src/tokens/index.ts"],
+      "@/tokens/*": ["src/tokens/*"],
+      "@shared-types": ["src/types/shared-types.ts"]
+    }
+  },
+  "include": ["src/**/*", "App.tsx", "index.js"]
+}

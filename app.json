@@ -1,0 +1,21 @@
+{
+  "expo": {
+    "name": "Taleem ul Quran",
+    "slug": "taleem-ul-quran",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "package": "com.taleemulquran.mobile"
+    },
+    "plugins": [
+      "expo-font"
+    ]
+  }
+}

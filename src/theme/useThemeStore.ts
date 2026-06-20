@@ -1,0 +1,27 @@
+import { create } from 'zustand';
+import { persist, createJSONStorage } from 'zustand/middleware';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import type { ThemeMode } from './themes';
+
+/**
+ * Persisted theme preference. `mode` is the user's choice
+ * ('light' | 'dark' | 'system'); the resolved palette is computed in
+ * `useTheme()` (which also factors in the OS appearance when 'system').
+ */
+interface ThemeState {
+  mode: ThemeMode;
+  setMode: (mode: ThemeMode) => void;
+}
+
+export const useThemeStore = create<ThemeState>()(
+  persist(
+    (set) => ({
+      mode: 'system',
+      setMode: (mode) => set({ mode }),
+    }),
+    {
+      name: 'dawat-theme-storage',
+      storage: createJSONStorage(() => AsyncStorage),
+    }
+  )
+);
