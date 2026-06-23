@@ -42,6 +42,7 @@ export type IbadaatStackParamList = {
   Ibadaat: undefined;
   Qibla: undefined;
   Duaa: undefined;
+  Tasbeeh: undefined;
 };
 
 export type MoreStackParamList = {

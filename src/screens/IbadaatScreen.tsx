@@ -58,8 +58,7 @@ export default function IbadaatScreen(): React.JSX.Element {
       icon: '📿',
       label: 'Tasbeeh',
       labelUrdu: 'تسبیح',
-      onPress: comingSoon,
-      comingSoon: true,
+      onPress: () => navigation.navigate('Tasbeeh'),
     },
     {
       key: 'hajj',

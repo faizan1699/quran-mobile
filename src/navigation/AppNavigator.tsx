@@ -35,6 +35,7 @@ import QuranLandingScreen from '@/screens/QuranLandingScreen';
 import SurahListScreen from '@/screens/SurahListScreen';
 import QuranReaderScreen from '@/screens/QuranReaderScreen';
 import IbadaatScreen from '@/screens/IbadaatScreen';
+import TasbeehScreen from '@/screens/TasbeehScreen';
 
 // Import Token Styles
 import { typography } from '@/tokens';
@@ -87,6 +88,7 @@ function IbadaatStackScreen() {
       <IbadaatStack.Screen name="Ibadaat" component={IbadaatScreen} />
       <IbadaatStack.Screen name="Qibla" component={QiblaScreen} />
       <IbadaatStack.Screen name="Duaa" component={DuaaScreen} />
+      <IbadaatStack.Screen name="Tasbeeh" component={TasbeehScreen} />
     </IbadaatStack.Navigator>
   );
 }

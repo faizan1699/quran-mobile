@@ -143,6 +143,17 @@
     "location": "GPS Location",
     "status": "Qibla is calibrated correctly"
   },
+  "tasbeeh": {
+    "title": "Tasbeeh",
+    "tapToCount": "Tap to count",
+    "rounds": "Rounds",
+    "target": "Target",
+    "lifetime": "Lifetime",
+    "undo": "Undo",
+    "vibration": "Vibration",
+    "reset": "Reset",
+    "setTarget": "Set target"
+  },
   "settings": {
     "title": "Settings",
     "language": "App Language",
