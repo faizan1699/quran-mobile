@@ -38,6 +38,8 @@ import IbadaatScreen from '@/screens/IbadaatScreen';
 import TasbeehScreen from '@/screens/TasbeehScreen';
 import AllahNamesScreen from '@/screens/AllahNamesScreen';
 import GuideScreen from '@/screens/GuideScreen';
+import NotesListScreen from '@/screens/NotesListScreen';
+import NoteEditorScreen from '@/screens/NoteEditorScreen';
 
 // Import Token Styles
 import { typography } from '@/tokens';
@@ -243,6 +245,12 @@ export function AppNavigator(): React.JSX.Element {
         <RootStackScreen name="BookDetail" component={BookDetailScreen} />
         <RootStackScreen name="Reader" component={ReaderScreen} />
         <RootStackScreen name="QuranReader" component={QuranReaderScreen} />
+        <RootStackScreen name="NotesList" component={NotesListScreen} />
+        <RootStackScreen
+          name="NoteEditor"
+          component={NoteEditorScreen}
+          options={{ presentation: 'card' }}
+        />
       </RootStackNavigator>
     </NavigationContainer>
   );

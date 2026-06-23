@@ -216,6 +216,20 @@ export default function QuranReaderScreen(): React.JSX.Element {
                       </Text>
                     </TouchableOpacity>
 
+                    <TouchableOpacity
+                      style={styles.iconBtn}
+                      onPress={() =>
+                        navigation.navigate('NoteEditor', {
+                          surahNumber,
+                          surahName,
+                          ayahNumber: ayah.sequenceNumber,
+                        })
+                      }
+                      activeOpacity={0.7}
+                    >
+                      <Text style={styles.bookmarkIcon}>📝</Text>
+                    </TouchableOpacity>
+
                     {ayah.audioUrl && (
                       <TouchableOpacity
                         style={styles.playBtn}
