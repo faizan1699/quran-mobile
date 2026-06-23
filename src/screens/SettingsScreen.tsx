@@ -11,8 +11,10 @@ import {
 } from 'react-native';
 import { Ionicons as RawIonicons } from '@expo/vector-icons';
 import { useQueryClient } from '@tanstack/react-query';
+import { useNavigation, NavigationProp } from '@react-navigation/native';
 import { useTranslation } from '@/i18n';
 import { useTheme, Theme } from '@/theme';
+import { RootStackParamList } from '@/navigation/types';
 import { useUserStore, FiqhMethod, LocationData } from '@/store/useUserStore';
 import { usePreferencesStore, FontScale } from '@/store/usePreferencesStore';
 import { useDeviceLocation } from '@/hooks/useDeviceLocation';
@@ -81,6 +83,7 @@ export default function SettingsScreen(): React.JSX.Element {
   const { fiqhMethod, setFiqhMethod, location, setLocation } = useUserStore();
   const { detecting, error: locationError, detectLocation } = useDeviceLocation();
   const queryClient = useQueryClient();
+  const navigation = useNavigation<NavigationProp<RootStackParamList>>();
   const styles = useMemo(() => createStyles(theme), [theme]);
 
   const {
@@ -158,6 +161,29 @@ export default function SettingsScreen(): React.JSX.Element {
         showsVerticalScrollIndicator={false}
       >
         <Text style={[styles.screenTitle, isRTL && styles.textRTL]}>{t('settings.title')}</Text>
+
+        <View style={styles.sectionCard}>
+          <TouchableOpacity
+            style={[styles.clearCacheButton, isRTL && styles.rowRTL]}
+            onPress={() => navigation.navigate('NotesList')}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="document-text-outline" size={18} color={theme.textBrandGreen} />
+            <View style={styles.clearCacheTextCol}>
+              <Text style={[styles.clearCacheLabel, isRTL && styles.textRTL]}>
+                {t('notes.title')}
+              </Text>
+              <Text style={[styles.clearCacheDesc, isRTL && styles.textRTL]}>
+                {t('notes.settingsDesc')}
+              </Text>
+            </View>
+            <Ionicons
+              name={isRTL ? 'chevron-back' : 'chevron-forward'}
+              size={16}
+              color={theme.textMuted}
+            />
+          </TouchableOpacity>
+        </View>
 
         {/* Appearance / Theme */}
         <View style={styles.sectionCard}>

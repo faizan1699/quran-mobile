@@ -15,6 +15,15 @@ export type RootStackParamList = {
     surahNumber: number;
     surahName: string;
   };
+  NotesList: undefined;
+  NoteEditor:
+    | {
+        noteId?: number;
+        surahNumber?: number;
+        surahName?: string;
+        ayahNumber?: number;
+      }
+    | undefined;
 };
 
 // Islam360-style bottom tabs: Quran | Hadith | Home (center) | Ibadaat | More

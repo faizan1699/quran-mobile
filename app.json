@@ -15,7 +15,8 @@
       "package": "com.taleemulquran.mobile"
     },
     "plugins": [
-      "expo-font"
+      "expo-font",
+      "expo-sqlite"
     ]
   }
 }
