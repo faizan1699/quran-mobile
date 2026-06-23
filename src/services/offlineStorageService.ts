@@ -41,11 +41,6 @@ export interface OfflineDuaa {
   audioUrl?: string | null;
 }
 
-// ============================================================================
-// RICH MOCK DATASET
-// Contains authentic Arabic script and translations to ensure pixel-perfect renders.
-// ============================================================================
-
 const MOCK_BOOKS: OfflineBook[] = [
   {
     id: 'b1',

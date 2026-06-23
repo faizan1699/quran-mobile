@@ -154,6 +154,10 @@
     "reset": "صفر کریں",
     "setTarget": "ہدف مقرر کریں"
   },
+  "allahNames": {
+    "title": "اللہ کے ۹۹ نام",
+    "searchPlaceholder": "نام تلاش کریں..."
+  },
   "settings": {
     "title": "ترتیبات",
     "language": "ایپ کی زبان",

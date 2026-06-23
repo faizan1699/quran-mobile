@@ -6,7 +6,6 @@ import {
   ScrollView,
   TouchableOpacity,
   SafeAreaView,
-  Alert,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useTranslation } from '@/i18n';
@@ -29,14 +28,6 @@ export default function IbadaatScreen(): React.JSX.Element {
   const { theme } = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const navigation = useNavigation<any>();
-
-  const comingSoon = () =>
-    Alert.alert(
-      language === 'ur' ? 'جلد آ رہا ہے' : 'Coming Soon',
-      language === 'ur'
-        ? 'یہ فیچر ابھی تیار کیا جا رہا ہے۔'
-        : 'This feature is under construction.'
-    );
 
   const tiles: Tile[] = [
     {
@@ -65,40 +56,35 @@ export default function IbadaatScreen(): React.JSX.Element {
       icon: '🕋',
       label: 'Hajj Guide',
       labelUrdu: 'حج',
-      onPress: comingSoon,
-      comingSoon: true,
+      onPress: () => navigation.navigate('Guide', { guideId: 'hajj' }),
     },
     {
       key: 'umrah',
       icon: '🕌',
       label: 'Umrah Guide',
       labelUrdu: 'عمرہ',
-      onPress: comingSoon,
-      comingSoon: true,
+      onPress: () => navigation.navigate('Guide', { guideId: 'umrah' }),
     },
     {
       key: 'fasting',
       icon: '🌙',
       label: 'Fasting',
       labelUrdu: 'روزہ',
-      onPress: comingSoon,
-      comingSoon: true,
+      onPress: () => navigation.navigate('Guide', { guideId: 'fasting' }),
     },
     {
       key: 'names',
       icon: '🟡',
       label: 'Allah Names',
       labelUrdu: 'اسمائے حسنیٰ',
-      onPress: comingSoon,
-      comingSoon: true,
+      onPress: () => navigation.navigate('AllahNames'),
     },
     {
       key: 'janaza',
       icon: '🕊',
       label: 'Namaz-e-Janaza',
       labelUrdu: 'نمازِ جنازہ',
-      onPress: comingSoon,
-      comingSoon: true,
+      onPress: () => navigation.navigate('Guide', { guideId: 'janaza' }),
     },
   ];
 

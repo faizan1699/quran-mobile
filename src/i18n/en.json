@@ -154,6 +154,10 @@
     "reset": "Reset",
     "setTarget": "Set target"
   },
+  "allahNames": {
+    "title": "99 Names of Allah",
+    "searchPlaceholder": "Search names..."
+  },
   "settings": {
     "title": "Settings",
     "language": "App Language",
