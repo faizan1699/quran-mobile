@@ -143,6 +143,21 @@
     "location": "جی پی ایس مقام",
     "status": "قبلہ بالکل درست ہے"
   },
+  "tasbeeh": {
+    "title": "تسبیح",
+    "tapToCount": "گننے کے لیے دبائیں",
+    "rounds": "راؤنڈز",
+    "target": "ہدف",
+    "lifetime": "کل تسبیحات",
+    "undo": "واپس",
+    "vibration": "ارتعاش",
+    "reset": "صفر کریں",
+    "setTarget": "ہدف مقرر کریں"
+  },
+  "allahNames": {
+    "title": "اللہ کے ۹۹ نام",
+    "searchPlaceholder": "نام تلاش کریں..."
+  },
   "settings": {
     "title": "ترتیبات",
     "language": "ایپ کی زبان",

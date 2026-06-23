@@ -1,4 +1,5 @@
 import { NavigatorScreenParams } from '@react-navigation/native';
+import { GuideId } from '@/data/guides';
 
 export type RootStackParamList = {
   Splash: undefined;
@@ -42,6 +43,9 @@ export type IbadaatStackParamList = {
   Ibadaat: undefined;
   Qibla: undefined;
   Duaa: undefined;
+  Tasbeeh: undefined;
+  AllahNames: undefined;
+  Guide: { guideId: GuideId };
 };
 
 export type MoreStackParamList = {

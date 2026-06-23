@@ -4,8 +4,8 @@ import { useUserStore } from '@/store/useUserStore';
 
 // Determine the base API URL based on platform and environment
 const getBaseUrl = (): string => {
-  // Fallback default
-  let url = 'http://localhost:3000/api/v1';
+  // Fallback default (API runs on 3001; admin Next app holds 3000)
+  let url = 'http://localhost:3001/api/v1';
   
   // Override if running on Android emulator to connect to host computer
   if (Platform.OS === 'android') {
