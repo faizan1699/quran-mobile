@@ -1,28 +1,14 @@
 import { colors } from '@/tokens';
 
-/**
- * Theme system for light / dark mode.
- *
- * `semanticColors` in the tokens layer is the static (light-only) palette that
- * predates theming. This module promotes those semantics into two concrete
- * palettes (`lightTheme` / `darkTheme`) that share an identical shape, so a
- * screen consuming `theme.x` reads the right value for the active mode.
- *
- * Brand accents (greens in `colors.primary`, golds in `colors.gold`) are kept
- * as-is and used directly — they're on-brand and read well on both surfaces.
- * Only the neutral surfaces / text / borders flip between modes.
- */
 export type ThemeMode = 'light' | 'dark' | 'system';
 
 export interface Theme {
-  /** Resolved mode (never 'system'). */
   mode: 'light' | 'dark';
   isDark: boolean;
+  glass: boolean;
   statusBarStyle: 'light-content' | 'dark-content';
 
-  // Surfaces
   bgPage: string;
-  /** Deep brand-green hero background (Home scroll area, splash). */
   bgPageAlt: string;
   bgCard: string;
   bgElevated: string;
@@ -31,31 +17,27 @@ export interface Theme {
   bgHeader: string;
   bgNavBar: string;
 
-  // Branded card surfaces
   bgCardAyah: string;
   bgCardPrayer: string;
 
-  // Text
   textPrimary: string;
   textSecondary: string;
   textMuted: string;
-  /** Always-light text used on top of dark/brand surfaces. */
   textOnDark: string;
   textArabic: string;
   textGold: string;
   textBrandGreen: string;
 
-  // Borders
   border: string;
   borderDivider: string;
 
-  // Navigation
   navActive: string;
   navInactive: string;
 
-  // Brand accents (constant across modes, surfaced here for convenience)
   accentGreen: string;
   accentGold: string;
+  accentSoft: string;
+  textOnAccent: string;
 
   overlay: string;
 }
@@ -63,6 +45,7 @@ export interface Theme {
 export const lightTheme: Theme = {
   mode: 'light',
   isDark: false,
+  glass: false,
   statusBarStyle: 'dark-content',
 
   bgPage: colors.neutral[50],
@@ -93,6 +76,8 @@ export const lightTheme: Theme = {
 
   accentGreen: colors.primary[600],
   accentGold: colors.gold[600],
+  accentSoft: colors.primary[100],
+  textOnAccent: colors.neutral[0],
 
   overlay: 'rgba(0,0,0,0.5)',
 };
@@ -100,6 +85,7 @@ export const lightTheme: Theme = {
 export const darkTheme: Theme = {
   mode: 'dark',
   isDark: true,
+  glass: false,
   statusBarStyle: 'light-content',
 
   bgPage: '#0B1410',
@@ -130,6 +116,8 @@ export const darkTheme: Theme = {
 
   accentGreen: colors.primary[500],
   accentGold: colors.gold[500],
+  accentSoft: 'rgba(58,158,110,0.15)',
+  textOnAccent: colors.neutral[0],
 
   overlay: 'rgba(0,0,0,0.7)',
 };

@@ -153,7 +153,7 @@ const createStyles = (theme: Theme) =>
     },
     activeDot: {
       width: 14,
-      backgroundColor: theme.isDark ? colors.gold[500] : colors.primary[800],
+      backgroundColor: theme.isDark ? colors.gold[500] : theme.accentGreen,
     },
   });
 

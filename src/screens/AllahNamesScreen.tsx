@@ -193,7 +193,7 @@ const createStyles = (theme: Theme) =>
       width: 36,
       height: 36,
       borderRadius: 18,
-      backgroundColor: colors.primary[800],
+      backgroundColor: theme.accentGreen,
       borderWidth: 1,
       borderColor: colors.gold[500],
       justifyContent: 'center',

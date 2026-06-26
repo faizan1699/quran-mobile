@@ -71,7 +71,7 @@ export default function SurahListScreen(): React.JSX.Element {
 
         {isLoading ? (
           <View style={styles.centerBox}>
-            <ActivityIndicator size="large" color={colors.primary[800]} />
+            <ActivityIndicator size="large" color={theme.accentGreen} />
           </View>
         ) : isError ? (
           <View style={styles.centerBox}>
@@ -226,7 +226,7 @@ const createStyles = (theme: Theme) =>
     height: 40,
     borderRadius: borderRadius.button,
     borderWidth: 1.5,
-    borderColor: colors.primary[600],
+    borderColor: theme.accentGreen,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -269,7 +269,7 @@ const createStyles = (theme: Theme) =>
     textAlign: 'center',
   },
   retryBtn: {
-    backgroundColor: colors.primary[800],
+    backgroundColor: theme.accentGreen,
     borderRadius: borderRadius.button,
     paddingHorizontal: spacing[5],
     paddingVertical: spacing[2],

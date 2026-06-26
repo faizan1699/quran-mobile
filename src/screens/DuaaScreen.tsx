@@ -343,7 +343,7 @@ const createStyles = (theme: Theme) =>
     alignItems: 'center',
   },
   segmentButtonActive: {
-    backgroundColor: colors.primary[800],
+    backgroundColor: theme.accentGreen,
   },
   segmentText: {
     fontFamily: typography.fontFamily.english,
@@ -372,13 +372,13 @@ const createStyles = (theme: Theme) =>
     width: 18,
     height: 18,
     borderWidth: 1.5,
-    borderColor: colors.primary[800],
+    borderColor: theme.accentGreen,
     borderRadius: 3,
     justifyContent: 'center',
     alignItems: 'center',
   },
   checkboxActive: {
-    backgroundColor: colors.primary[800],
+    backgroundColor: theme.accentGreen,
   },
   checkboxTick: {
     fontSize: 12,
@@ -504,7 +504,7 @@ const createStyles = (theme: Theme) =>
   },
   chevronSymbol: {
     fontSize: 10,
-    color: colors.primary[800],
+    color: theme.accentGreen,
   },
   accordionChildren: {
     backgroundColor: theme.bgCard,

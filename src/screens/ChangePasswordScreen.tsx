@@ -204,7 +204,7 @@ const createStyles = (theme: Theme) =>
     primaryBtn: {
       height: 52,
       borderRadius: borderRadius.button,
-      backgroundColor: colors.primary[800],
+      backgroundColor: theme.accentGreen,
       justifyContent: 'center',
       alignItems: 'center',
       marginTop: spacing[1],

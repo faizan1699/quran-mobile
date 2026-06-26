@@ -238,7 +238,7 @@ const createStyles = (theme: Theme) =>
     alignItems: 'center',
   },
   segmentButtonActive: {
-    backgroundColor: colors.primary[800], // Brand green active segment
+    backgroundColor: theme.accentGreen, // Brand green active segment
   },
   segmentText: {
     fontFamily: typography.fontFamily.english,

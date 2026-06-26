@@ -158,7 +158,7 @@ export default function NoteEditorScreen(): React.JSX.Element {
   if (loading) {
     return (
       <SafeAreaView style={[styles.safeArea, styles.center]}>
-        <ActivityIndicator size="large" color={colors.primary[500]} />
+        <ActivityIndicator size="large" color={theme.accentGreen} />
       </SafeAreaView>
     );
   }
@@ -331,7 +331,7 @@ const createStyles = (theme: Theme) =>
       alignItems: 'center',
     },
     saveBtn: {
-      backgroundColor: colors.primary[800],
+      backgroundColor: theme.accentGreen,
       borderRadius: borderRadius.button,
       paddingHorizontal: spacing[4],
       paddingVertical: spacing[2],
@@ -366,7 +366,7 @@ const createStyles = (theme: Theme) =>
       flexDirection: 'row',
       alignItems: 'center',
       gap: 6,
-      backgroundColor: theme.isDark ? 'rgba(58,158,110,0.15)' : colors.primary[100],
+      backgroundColor: theme.isDark ? 'rgba(58,158,110,0.15)' : theme.accentSoft,
       borderRadius: borderRadius.full,
       paddingHorizontal: spacing[3],
       paddingVertical: spacing[1],

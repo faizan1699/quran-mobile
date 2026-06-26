@@ -166,7 +166,7 @@ export default function QuranReaderScreen(): React.JSX.Element {
         {/* States */}
         {isLoading ? (
           <View style={styles.centerBox}>
-            <ActivityIndicator size="large" color={colors.primary[800]} />
+            <ActivityIndicator size="large" color={theme.accentGreen} />
           </View>
         ) : isError ? (
           <View style={styles.centerBox}>
@@ -370,7 +370,7 @@ const createStyles = (theme: Theme) =>
     color: theme.textSecondary,
   },
   playSurahBtn: {
-    backgroundColor: colors.primary[800],
+    backgroundColor: theme.accentGreen,
     borderRadius: borderRadius.button,
     paddingHorizontal: spacing[3],
     paddingVertical: 6,
@@ -390,7 +390,7 @@ const createStyles = (theme: Theme) =>
     gap: spacing.cardGap,
   },
   surahHeader: {
-    backgroundColor: colors.primary[800],
+    backgroundColor: theme.accentGreen,
     borderRadius: borderRadius.card,
     padding: spacing.cardPaddingLg,
     alignItems: 'center',
@@ -471,7 +471,7 @@ const createStyles = (theme: Theme) =>
     marginBottom: spacing[3],
   },
   ayahBadge: {
-    backgroundColor: colors.primary[100],
+    backgroundColor: theme.accentSoft,
     borderRadius: borderRadius.badge,
     paddingHorizontal: spacing[3],
     paddingVertical: 4,
@@ -480,7 +480,7 @@ const createStyles = (theme: Theme) =>
     fontFamily: typography.fontFamily.english,
     fontSize: typography.fontSize.xs,
     fontWeight: typography.fontWeight.bold,
-    color: colors.primary[700],
+    color: theme.accentGreen,
   },
   ayahActions: {
     flexDirection: 'row',
@@ -501,7 +501,7 @@ const createStyles = (theme: Theme) =>
     opacity: 1,
   },
   playBtn: {
-    backgroundColor: colors.primary[100],
+    backgroundColor: theme.accentSoft,
     width: 34,
     height: 34,
     borderRadius: 17,
@@ -551,7 +551,7 @@ const createStyles = (theme: Theme) =>
     textAlign: 'center',
   },
   retryBtn: {
-    backgroundColor: colors.primary[800],
+    backgroundColor: theme.accentGreen,
     borderRadius: borderRadius.button,
     paddingHorizontal: spacing[5],
     paddingVertical: spacing[2],
