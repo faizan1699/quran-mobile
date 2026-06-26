@@ -5,12 +5,12 @@ import {
   Text,
   ScrollView,
   TouchableOpacity,
-  SafeAreaView,
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
   Alert,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, NavigationProp } from '@react-navigation/native';
 import { Ionicons as RawIonicons } from '@expo/vector-icons';
 import { useTranslation } from '@/i18n';
@@ -198,7 +198,7 @@ export default function AuthScreen(): React.JSX.Element {
   const idKeyboard = method === 'email' ? 'email-address' : 'phone-pad';
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView edges={['top', 'bottom']} style={styles.safeArea}>
       <KeyboardAvoidingView
         style={styles.flex}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}

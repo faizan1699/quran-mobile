@@ -5,9 +5,9 @@ import {
   Text,
   ScrollView,
   TouchableOpacity,
-  SafeAreaView,
   Alert,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, NavigationProp } from '@react-navigation/native';
 import { Ionicons as RawIonicons } from '@expo/vector-icons';
 import { useTranslation } from '@/i18n';
@@ -97,7 +97,7 @@ export default function ProfileScreen(): React.JSX.Element {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView edges={['top', 'bottom']} style={styles.safeArea}>
       {/* Top bar */}
       <View style={[styles.topBar, isRTL && styles.rowRTL]}>
         <TouchableOpacity

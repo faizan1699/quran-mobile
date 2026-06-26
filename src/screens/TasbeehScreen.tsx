@@ -5,10 +5,10 @@ import {
   Text,
   ScrollView,
   TouchableOpacity,
-  SafeAreaView,
   Vibration,
   Alert,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, NavigationProp } from '@react-navigation/native';
 import { useTranslation } from '@/i18n';
 import { useTheme, Theme } from '@/theme';
@@ -70,7 +70,7 @@ export default function TasbeehScreen(): React.JSX.Element {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView edges={['top']} style={styles.safeArea}>
       <GlobalHeader />
 
       <View style={[styles.subHeader, isRTL && styles.rowRTL]}>

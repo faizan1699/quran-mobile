@@ -5,11 +5,11 @@ import {
   Text,
   ScrollView,
   TouchableOpacity,
-  SafeAreaView,
   Modal,
   TextInput,
   Platform,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons as RawIonicons } from '@expo/vector-icons';
 import { useNavigation, NavigationProp } from '@react-navigation/native';
 import { useTranslation } from '@/i18n';
@@ -148,7 +148,7 @@ export default function AppearanceScreen(): React.JSX.Element {
   const hexValid = isValidHex(hexInput);
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView edges={['top']} style={styles.safeArea}>
       <GlobalHeader />
 
       <ScrollView

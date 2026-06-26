@@ -5,10 +5,10 @@ import {
   Text,
   ScrollView,
   TouchableOpacity,
-  SafeAreaView,
   Alert,
   ActivityIndicator,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons as RawIonicons } from '@expo/vector-icons';
 import { useQueryClient } from '@tanstack/react-query';
 import { useNavigation, NavigationProp } from '@react-navigation/native';
@@ -144,7 +144,7 @@ export default function SettingsScreen(): React.JSX.Element {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView edges={['top']} style={styles.safeArea}>
       <GlobalHeader />
 
       <ScrollView

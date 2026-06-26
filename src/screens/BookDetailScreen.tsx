@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { StyleSheet, View, Text, ScrollView, TouchableOpacity, SafeAreaView, Alert } from 'react-native';
+import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Alert } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRoute, useNavigation, RouteProp, NavigationProp } from '@react-navigation/native';
 import { Image } from 'expo-image';
 import { useTranslation } from '@/i18n';
@@ -53,7 +54,7 @@ export default function BookDetailScreen(): React.JSX.Element {
 
   if (!book) {
     return (
-      <SafeAreaView style={styles.safeArea}>
+      <SafeAreaView edges={['top', 'bottom']} style={styles.safeArea}>
         <GlobalHeader />
         <View style={styles.loadingContainer}>
           <Text style={styles.loadingText}>Loading...</Text>
@@ -65,7 +66,7 @@ export default function BookDetailScreen(): React.JSX.Element {
   const titleText = language === 'ur' && book.titleUrdu ? book.titleUrdu : book.title;
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView edges={['top', 'bottom']} style={styles.safeArea}>
       {/* Global Header */}
       <GlobalHeader />
 

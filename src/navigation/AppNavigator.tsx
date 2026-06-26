@@ -3,6 +3,7 @@ import { StyleSheet } from 'react-native';
 import { NavigationContainer as RawNavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   Ionicons as RawIonicons,
   MaterialCommunityIcons as RawMaterialCommunityIcons,
@@ -149,6 +150,7 @@ const tabIcons: Record<keyof TabParamList, (args: TabIconArgs) => React.ReactNod
 function TabNavigator() {
   const { t } = useTranslation();
   const { theme } = useTheme();
+  const insets = useSafeAreaInsets();
 
   return (
     // @ts-ignore
@@ -160,7 +162,12 @@ function TabNavigator() {
         tabBarInactiveTintColor: theme.navInactive,
         tabBarStyle: [
           styles.tabBar,
-          { backgroundColor: theme.bgNavBar, borderTopColor: theme.borderDivider },
+          {
+            backgroundColor: theme.bgNavBar,
+            borderTopColor: theme.borderDivider,
+            height: styles.tabBar.height + insets.bottom,
+            paddingBottom: styles.tabBar.paddingBottom + insets.bottom,
+          },
         ],
         tabBarLabelStyle: styles.tabBarLabel,
         tabBarItemStyle: styles.tabBarItem,

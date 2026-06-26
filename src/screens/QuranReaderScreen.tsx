@@ -5,11 +5,11 @@ import {
   Text,
   ScrollView,
   TouchableOpacity,
-  SafeAreaView,
   ActivityIndicator,
   Modal,
   Pressable,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRoute, useNavigation, RouteProp } from '@react-navigation/native';
 import { useTranslation } from '@/i18n';
 import { useAudioStore } from '@/store/useAudioStore';
@@ -155,7 +155,7 @@ export default function QuranReaderScreen(): React.JSX.Element {
   const showBismillah = surahNumber !== 1 && surahNumber !== 9;
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView edges={['top', 'bottom']} style={styles.safeArea}>
       <GlobalHeader />
 
       {/* Control / nav bar */}

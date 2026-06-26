@@ -6,12 +6,12 @@ import {
   TextInput,
   TouchableOpacity,
   ScrollView,
-  SafeAreaView,
   KeyboardAvoidingView,
   Platform,
   Alert,
   ActivityIndicator,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons as RawIonicons } from '@expo/vector-icons';
@@ -157,14 +157,14 @@ export default function NoteEditorScreen(): React.JSX.Element {
 
   if (loading) {
     return (
-      <SafeAreaView style={[styles.safeArea, styles.center]}>
+      <SafeAreaView edges={['top', 'bottom']} style={[styles.safeArea, styles.center]}>
         <ActivityIndicator size="large" color={theme.accentGreen} />
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView edges={['top', 'bottom']} style={styles.safeArea}>
       <View style={[styles.header, isRTL && styles.rowRTL]}>
         <TouchableOpacity
           style={styles.iconBtn}

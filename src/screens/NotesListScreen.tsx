@@ -6,8 +6,8 @@ import {
   TextInput,
   TouchableOpacity,
   FlatList,
-  SafeAreaView,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   useNavigation,
   useFocusEffect,
@@ -123,7 +123,7 @@ export default function NotesListScreen(): React.JSX.Element {
   );
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView edges={['top', 'bottom']} style={styles.safeArea}>
       <View style={[styles.header, isRTL && styles.rowRTL]}>
         <TouchableOpacity
           style={styles.backBtn}
