@@ -27,11 +27,11 @@ export default function ReaderScreen(): React.JSX.Element {
 
   useEffect(() => {
     const loadContents = async () => {
-      const data = await offlineStorageService.getChapterContents(chapterId);
+      const data = await offlineStorageService.getChapterContents(bookId, chapterId);
       setContents(data);
     };
     loadContents();
-  }, [chapterId]);
+  }, [bookId, chapterId]);
 
   // Cycle font size modifier: 0 -> 4 -> 8 -> 12 -> 0
   const cycleFontSize = () => {
