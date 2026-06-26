@@ -1,5 +1,5 @@
-import React from 'react';
-import { StyleSheet, View, Text, TouchableOpacity } from 'react-native';
+import React, { useState } from 'react';
+import { StyleSheet, View, Text, TouchableOpacity, LayoutChangeEvent } from 'react-native';
 import { useAudioStore, State } from '@/store/useAudioStore';
 import { colors, spacing, typography } from '@/tokens';
 
@@ -19,6 +19,8 @@ export function AudioPlayerBar(): React.JSX.Element | null {
     playbackState,
     position,
     duration,
+    queue,
+    durations,
     togglePlay,
     skipToNext,
     skipToPrevious,
@@ -27,22 +29,45 @@ export function AudioPlayerBar(): React.JSX.Element | null {
     toggleShuffle,
     toggleRepeat,
     seekTo,
+    seekGlobal,
   } = useAudioStore();
+
+  const [sliderWidth, setSliderWidth] = useState(0);
 
   // Do not render anything if no track is active
   if (!currentTrack) return null;
 
   const isPlaying = playbackState === State.Playing;
 
-  // Calculate percentage for custom gold progress slider bar
-  const percentComplete = duration > 0
-    ? (position / duration) * 100
-    : 0;
+  const currentIndex = queue.findIndex((t) => t.id === currentTrack.id);
+  const allDurationsKnown =
+    queue.length > 0 && queue.every((t) => (durations[t.id] || 0) > 0);
+  const useGlobal = allDurationsKnown && currentIndex >= 0;
 
-  // Manual scrubbing trigger
-  const handleScrub = (percent: number) => {
-    const targetSeconds = (percent / 100) * duration;
-    seekTo(targetSeconds);
+  const elapsedBefore = useGlobal
+    ? queue.slice(0, currentIndex).reduce((sum, t) => sum + (durations[t.id] || 0), 0)
+    : 0;
+  const totalDuration = useGlobal
+    ? queue.reduce((sum, t) => sum + (durations[t.id] || 0), 0)
+    : duration;
+  const displayPosition = useGlobal ? elapsedBefore + position : position;
+
+  const percentComplete =
+    totalDuration > 0 ? Math.min(100, (displayPosition / totalDuration) * 100) : 0;
+
+  const onSliderLayout = (e: LayoutChangeEvent) => {
+    setSliderWidth(e.nativeEvent.layout.width);
+  };
+
+  const handleScrub = (clickX: number) => {
+    const width = sliderWidth || 1;
+    const percent = Math.max(0, Math.min(1, clickX / width));
+    const targetSeconds = percent * totalDuration;
+    if (useGlobal) {
+      seekGlobal(targetSeconds);
+    } else {
+      seekTo(targetSeconds);
+    }
   };
 
   return (
@@ -50,24 +75,19 @@ export function AudioPlayerBar(): React.JSX.Element | null {
       {/* Progress Bar Row */}
       <View style={styles.progressRow}>
         <Text style={styles.timeLabel}>
-          {formatDuration(position)}
+          {formatDuration(displayPosition)}
         </Text>
         <TouchableOpacity
           style={styles.sliderTrack}
           activeOpacity={0.9}
-          onPress={(e) => {
-            // Simple click-to-seek approximation
-            const layoutWidth = 180; // approximate slider width
-            const clickX = e.nativeEvent.locationX;
-            const percentage = Math.max(0, Math.min(100, (clickX / layoutWidth) * 100));
-            handleScrub(percentage);
-          }}
+          onLayout={onSliderLayout}
+          onPress={(e) => handleScrub(e.nativeEvent.locationX)}
         >
           <View style={[styles.sliderFill, { width: `${percentComplete}%` }]} />
           <View style={[styles.sliderThumb, { left: `${percentComplete}%` }]} />
         </TouchableOpacity>
         <Text style={styles.timeLabel}>
-          {formatDuration(duration)}
+          {formatDuration(totalDuration)}
         </Text>
       </View>
 
@@ -112,6 +132,9 @@ export function AudioPlayerBar(): React.JSX.Element | null {
           : currentTrack.artist
           ? `${currentTrack.title}  ·  ${currentTrack.artist}`
           : currentTrack.title}
+        {queue.length > 1 && currentIndex >= 0
+          ? `  ·  ${currentIndex + 1}/${queue.length}`
+          : ''}
       </Text>
     </View>
   );
