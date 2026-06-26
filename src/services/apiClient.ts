@@ -1,15 +1,38 @@
 import axios, { AxiosRequestConfig, InternalAxiosRequestConfig } from 'axios';
-import { Platform } from 'react-native';
+import { Platform, NativeModules } from 'react-native';
 import { useUserStore } from '@/store/useUserStore';
 
+const API_PORT = 3001;
+
+const getDevHost = (): string | null => {
+  const scriptURL: string | undefined = NativeModules?.SourceCode?.scriptURL;
+  const match = scriptURL?.match(/https?:\/\/([^/:]+)/);
+  return match ? match[1] : null;
+};
+
 const getBaseUrl = (): string => {
-  let url = 'http://localhost:3001/api/v1';
-  
-  if (Platform.OS === 'android') {
-    url = url.replace('localhost', '10.0.2.2').replace('127.0.0.1', '10.0.2.2');
+  const isDev = process.env.EXPO_PUBLIC_APP_ENV === 'development';
+  const fromEnv = process.env.EXPO_PUBLIC_API_URL?.trim();
+
+  if (!isDev && fromEnv && fromEnv.length > 0) {
+    return fromEnv.replace(/\/+$/, '');
   }
-  
-  return url;
+
+  if (Platform.OS === 'web') {
+    const host = (globalThis as any)?.location?.hostname || 'localhost';
+    return `http://${host}:${API_PORT}/api/v1`;
+  }
+
+  const devHost = getDevHost();
+  if (devHost && devHost !== 'localhost' && devHost !== '127.0.0.1') {
+    return `http://${devHost}:${API_PORT}/api/v1`;
+  }
+
+  if (Platform.OS === 'android') {
+    return `http://10.0.2.2:${API_PORT}/api/v1`;
+  }
+
+  return `http://localhost:${API_PORT}/api/v1`;
 };
 
 export const apiClient = axios.create({
