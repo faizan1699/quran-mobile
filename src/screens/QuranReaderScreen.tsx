@@ -18,7 +18,7 @@ import { usePreferencesStore } from '@/store/usePreferencesStore';
 import { GlobalHeader } from '@/components/GlobalHeader';
 import { AudioPlayerBar } from '@/components/AudioPlayerBar';
 import { AyahArabic } from '@/components/AyahArabic';
-import { useSurahAyahs } from '@/hooks/useQuran';
+import { useSurahAyahs, useTafseerSections } from '@/hooks/useQuran';
 import { getSurahMeta } from '@/data/surahMeta';
 import {
   RECITERS,
@@ -50,6 +50,17 @@ export default function QuranReaderScreen(): React.JSX.Element {
     bookId,
     chapterId
   );
+
+  const { data: tafseerSections } = useTafseerSections(surahNumber);
+
+  const sectionForAyah = (ayahNumber: number) =>
+    tafseerSections?.find(
+      (s) =>
+        s.ayahStart != null &&
+        s.ayahEnd != null &&
+        ayahNumber >= s.ayahStart &&
+        ayahNumber <= s.ayahEnd
+    ) ?? null;
 
   const playTrack = useAudioStore((s) => s.playTrack);
   const setQueue = useAudioStore((s) => s.setQueue);
@@ -349,18 +360,30 @@ export default function QuranReaderScreen(): React.JSX.Element {
                   </Text>
                 </TouchableOpacity>
 
-                {openTafseer[ayah.id] && (
-                  <View style={styles.tafseerBox}>
-                    <Text
-                      style={[
-                        styles.tafseerText,
-                        language === 'ur' && styles.tafseerUrdu,
-                      ]}
-                    >
-                      {ayah.tafseerText || t('quran.tafseerSoon')}
-                    </Text>
-                  </View>
-                )}
+                {openTafseer[ayah.id] && (() => {
+                  const section = sectionForAyah(ayah.sequenceNumber);
+                  const sectionText = section?.text;
+                  const fallback = ayah.tafseerText;
+                  return (
+                    <View style={styles.tafseerBox}>
+                      {section && (
+                        <Text style={styles.tafseerSourceLabel}>
+                          {language === 'ur'
+                            ? `تعلیم القرآن • آیات ${section.ayahRange}`
+                            : `Taleem-ul-Quran • Ayahs ${section.ayahRange}`}
+                        </Text>
+                      )}
+                      <Text
+                        style={[
+                          styles.tafseerText,
+                          (sectionText || language === 'ur') && styles.tafseerUrdu,
+                        ]}
+                      >
+                        {sectionText || fallback || t('quran.tafseerSoon')}
+                      </Text>
+                    </View>
+                  );
+                })()}
               </View>
             );
           })
@@ -580,6 +603,14 @@ const createStyles = (theme: Theme) =>
     borderLeftWidth: 3,
     borderLeftColor: colors.gold[500],
     padding: spacing[3],
+  },
+  tafseerSourceLabel: {
+    fontFamily: typography.fontFamily.english,
+    fontSize: typography.fontSize.xs,
+    fontWeight: typography.fontWeight.bold,
+    color: colors.gold[600],
+    marginBottom: spacing[2],
+    textAlign: 'right',
   },
   tafseerText: {
     fontFamily: typography.fontFamily.english,

@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { quranService } from '@/services/quranService';
-import { Book, Chapter, Content } from '@shared-types';
+import { Book, Chapter, Content, QuranTafseerSection } from '@shared-types';
 
 /** The Quran book record (resolved once, cached for the session). */
 export function useQuranBook() {
@@ -47,6 +47,16 @@ export function useSurahAyahs(bookId?: string, chapterId?: string) {
     queryKey: ['quran', 'ayahs', bookId, chapterId],
     queryFn: () => quranService.getSurahAyahs(bookId as string, chapterId as string),
     enabled: !!bookId && !!chapterId,
+    staleTime: Infinity,
+  });
+}
+
+/** Taleem-ul-Quran tafseer sections (ayah-range based) for a surah. */
+export function useTafseerSections(surahNumber?: number) {
+  return useQuery<QuranTafseerSection[]>({
+    queryKey: ['quran', 'tafseer', surahNumber],
+    queryFn: () => quranService.getTafseerSections(surahNumber as number),
+    enabled: !!surahNumber,
     staleTime: Infinity,
   });
 }

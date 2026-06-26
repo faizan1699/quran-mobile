@@ -122,6 +122,19 @@ export interface Content {
   createdAt: string;
 }
 
+export interface QuranTafseerSection {
+  id: string;
+  surah: number;
+  ayahRange?: string | null;
+  ayahStart?: number | null;
+  ayahEnd?: number | null;
+  jild?: number | null;
+  sourceFile: string;
+  text: string;
+  sequence: number;
+  status: ContentStatus;
+}
+
 export interface DailyContent {
   id: string;
   date: string;

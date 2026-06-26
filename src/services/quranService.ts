@@ -1,6 +1,12 @@
 import { apiClient } from './apiClient';
 import { cached, cachedRevalidate } from './offlineCache';
-import { Book, BookCategory, Chapter, Content } from '@shared-types';
+import {
+  Book,
+  BookCategory,
+  Chapter,
+  Content,
+  QuranTafseerSection,
+} from '@shared-types';
 import {
   mockQuranBook,
   mockSurahs,
@@ -53,5 +59,11 @@ export const quranService = {
       }
       return all;
     });
+  },
+
+  async getTafseerSections(surah: number): Promise<QuranTafseerSection[]> {
+    return cachedRevalidate(`quran:tafseer:${surah}`, () =>
+      unwrap<QuranTafseerSection[]>(apiClient.get(`/quran/tafseer/${surah}`))
+    );
   },
 };
