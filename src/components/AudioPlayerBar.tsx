@@ -109,6 +109,8 @@ export function AudioPlayerBar(): React.JSX.Element | null {
       <Text style={styles.metaText} numberOfLines={1}>
         {currentTrack.hadithNumber
           ? `Hadith #${currentTrack.hadithNumber}: ${currentTrack.title}`
+          : currentTrack.artist
+          ? `${currentTrack.title}  ·  ${currentTrack.artist}`
           : currentTrack.title}
       </Text>
     </View>

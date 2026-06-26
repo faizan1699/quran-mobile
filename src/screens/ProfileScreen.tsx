@@ -327,11 +327,11 @@ const createStyles = (theme: Theme) =>
     },
     // Hero
     heroCard: {
-      backgroundColor: colors.primary[800],
+      backgroundColor: theme.accentGreen,
       borderRadius: borderRadius['2xl'],
       padding: spacing.cardPaddingLg,
       borderWidth: 1,
-      borderColor: theme.isDark ? colors.primary[700] : colors.gold[500],
+      borderColor: theme.isDark ? theme.accentGreen : colors.gold[500],
       overflow: 'hidden',
       ...shadows.card,
     },
@@ -342,7 +342,7 @@ const createStyles = (theme: Theme) =>
       width: 160,
       height: 160,
       borderRadius: 80,
-      backgroundColor: colors.primary[500],
+      backgroundColor: theme.accentGreen,
       opacity: 0.25,
     },
     heroRow: {
@@ -462,7 +462,7 @@ const createStyles = (theme: Theme) =>
       borderRadius: borderRadius.full,
     },
     segmentItemActive: {
-      backgroundColor: colors.primary[800],
+      backgroundColor: theme.accentGreen,
     },
     segmentText: {
       fontFamily: typography.fontFamily.english,
@@ -504,7 +504,7 @@ const createStyles = (theme: Theme) =>
       paddingHorizontal: 6,
       height: 22,
       borderRadius: 11,
-      backgroundColor: colors.primary[100],
+      backgroundColor: theme.accentSoft,
       justifyContent: 'center',
       alignItems: 'center',
     },
@@ -512,7 +512,7 @@ const createStyles = (theme: Theme) =>
       fontFamily: typography.fontFamily.english,
       fontSize: typography.fontSize.xs,
       fontWeight: typography.fontWeight.bold,
-      color: colors.primary[800],
+      color: theme.accentGreen,
     },
     // Logout
     logoutButton: {

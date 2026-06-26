@@ -59,4 +59,5 @@ export type IbadaatStackParamList = {
 
 export type MoreStackParamList = {
   Settings: undefined;
+  Appearance: undefined;
 };

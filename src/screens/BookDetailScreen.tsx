@@ -255,7 +255,7 @@ const createStyles = (theme: Theme) =>
     marginTop: 6,
   },
   badge: {
-    backgroundColor: colors.primary[100],
+    backgroundColor: theme.accentSoft,
     paddingHorizontal: 8,
     paddingVertical: 2,
     borderRadius: borderRadius.badge,
@@ -271,7 +271,7 @@ const createStyles = (theme: Theme) =>
     alignItems: 'center',
     backgroundColor: theme.bgCard,
     borderWidth: 1,
-    borderColor: colors.primary[800],
+    borderColor: theme.accentGreen,
     borderRadius: borderRadius.button,
     paddingVertical: 8,
     paddingHorizontal: 12,
@@ -281,7 +281,7 @@ const createStyles = (theme: Theme) =>
     ...shadows.sm,
   },
   downloadBtnActive: {
-    backgroundColor: colors.primary[800],
+    backgroundColor: theme.accentGreen,
   },
   downloadIcon: {
     fontSize: 14,

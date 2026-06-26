@@ -28,6 +28,7 @@ import ReaderScreen from '@/screens/ReaderScreen';
 import DuaaScreen from '@/screens/DuaaScreen';
 import QiblaScreen from '@/screens/QiblaScreen';
 import SettingsScreen from '@/screens/SettingsScreen';
+import AppearanceScreen from '@/screens/AppearanceScreen';
 import ProfileScreen from '@/screens/ProfileScreen';
 import AuthScreen from '@/screens/AuthScreen';
 import ChangePasswordScreen from '@/screens/ChangePasswordScreen';
@@ -104,6 +105,7 @@ function MoreStackScreen() {
     // @ts-ignore
     <MoreStack.Navigator screenOptions={{ headerShown: false }}>
       <MoreStack.Screen name="Settings" component={SettingsScreen} />
+      <MoreStack.Screen name="Appearance" component={AppearanceScreen} />
     </MoreStack.Navigator>
   );
 }

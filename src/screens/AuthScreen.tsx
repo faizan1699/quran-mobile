@@ -500,7 +500,7 @@ const createStyles = (theme: Theme) =>
     },
     // Hero
     hero: {
-      backgroundColor: colors.primary[800],
+      backgroundColor: theme.accentGreen,
       paddingTop: spacing[8],
       paddingBottom: spacing[8],
       paddingHorizontal: spacing.pagePadding,
@@ -516,7 +516,7 @@ const createStyles = (theme: Theme) =>
       width: 180,
       height: 180,
       borderRadius: 90,
-      backgroundColor: colors.primary[500],
+      backgroundColor: theme.accentGreen,
       opacity: 0.22,
     },
     closeBtn: {
@@ -604,7 +604,7 @@ const createStyles = (theme: Theme) =>
       borderRadius: borderRadius.full,
     },
     segmentItemActive: {
-      backgroundColor: colors.primary[800],
+      backgroundColor: theme.accentGreen,
     },
     segmentText: {
       fontFamily: typography.fontFamily.english,
@@ -659,7 +659,7 @@ const createStyles = (theme: Theme) =>
     primaryBtn: {
       height: 52,
       borderRadius: borderRadius.button,
-      backgroundColor: colors.primary[800],
+      backgroundColor: theme.accentGreen,
       justifyContent: 'center',
       alignItems: 'center',
     },
