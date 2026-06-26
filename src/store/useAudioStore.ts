@@ -87,7 +87,6 @@ export const useAudioStore = create<AudioState>((set, get) => {
       try {
         set({ currentTrack: track, position: 0, duration: 0 });
 
-        // Request audio focus/permissions on iOS/Android
         await Audio.setAudioModeAsync({
           allowsRecordingIOS: false,
           staysActiveInBackground: true,
@@ -95,18 +94,14 @@ export const useAudioStore = create<AudioState>((set, get) => {
           playThroughEarpieceAndroid: false,
         });
 
-        if (soundInstance) {
+        if (!soundInstance) {
+          soundInstance = new Audio.Sound();
+          soundInstance.setOnPlaybackStatusUpdate(onPlaybackStatusUpdate);
+        } else {
           await soundInstance.unloadAsync();
-          soundInstance = null;
         }
 
-        const { sound } = await Audio.Sound.createAsync(
-          { uri: track.url },
-          { shouldPlay: true },
-          onPlaybackStatusUpdate
-        );
-        
-        soundInstance = sound;
+        await soundInstance.loadAsync({ uri: track.url }, { shouldPlay: true });
       } catch (error) {
         console.error('Error playing track via expo-av:', error);
       }
