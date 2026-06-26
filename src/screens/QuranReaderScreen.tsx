@@ -36,6 +36,9 @@ type QuranReaderRouteProp = RouteProp<RootStackParamList, 'QuranReader'>;
 
 const BISMILLAH = 'بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ';
 
+const toArabicDigits = (n: number): string =>
+  String(n).replace(/[0-9]/g, (d) => '٠١٢٣٤٥٦٧٨٩'[Number(d)]);
+
 export default function QuranReaderScreen(): React.JSX.Element {
   const route = useRoute<QuranReaderRouteProp>();
   const navigation = useNavigation<any>();
@@ -76,6 +79,7 @@ export default function QuranReaderScreen(): React.JSX.Element {
   const [openTafseer, setOpenTafseer] = useState<Record<string, boolean>>({});
   const [fontModifier, setFontModifier] = useState(0); // 0 -> 4 -> 8 -> 12
   const [reciterModalOpen, setReciterModalOpen] = useState(false);
+  const [readMode, setReadMode] = useState(false);
 
   const toggleTafseer = (id: string) =>
     setOpenTafseer((prev) => ({ ...prev, [id]: !prev[id] }));
@@ -191,6 +195,16 @@ export default function QuranReaderScreen(): React.JSX.Element {
               {language === 'ur' ? 'ترجمہ' : 'Tr'}
             </Text>
           </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.fontBtn, readMode && styles.toggleActive]}
+            onPress={() => setReadMode((p) => !p)}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.fontIcon}>📖</Text>
+            <Text style={[styles.fontText, readMode && styles.toggleActiveText]}>
+              {language === 'ur' ? 'مطالعہ' : 'Read'}
+            </Text>
+          </TouchableOpacity>
           <TouchableOpacity style={styles.playSurahBtn} onPress={playSurah} activeOpacity={0.8}>
             <Text style={styles.playSurahText}>▶ {t('quran.playSurah')}</Text>
           </TouchableOpacity>
@@ -227,6 +241,25 @@ export default function QuranReaderScreen(): React.JSX.Element {
         ) : !ayahs || ayahs.length === 0 ? (
           <View style={styles.centerBox}>
             <Text style={styles.emptyText}>{t('quran.noAyahs')}</Text>
+          </View>
+        ) : readMode ? (
+          <View style={styles.readCard}>
+            <Text
+              style={[
+                styles.readArabic,
+                {
+                  fontSize: sizeArabic + 4,
+                  lineHeight: (sizeArabic + 4) * typography.lineHeight.arabic,
+                },
+              ]}
+            >
+              {ayahs.map((ayah: QuranAyah) => (
+                <Text key={ayah.id}>
+                  {ayah.arabic}
+                  <Text style={styles.ayahMarker}>{`  ﴿${toArabicDigits(ayah.ayah)}﴾  `}</Text>
+                </Text>
+              ))}
+            </Text>
           </View>
         ) : (
           ayahs.map((ayah: QuranAyah) => {
@@ -600,6 +633,24 @@ const createStyles = (theme: Theme) =>
     borderWidth: 1,
     borderColor: theme.border,
     ...shadows.sm,
+  },
+  readCard: {
+    backgroundColor: theme.bgCard,
+    borderRadius: borderRadius.card,
+    padding: spacing.cardPaddingLg,
+    borderWidth: 1,
+    borderColor: theme.border,
+    ...shadows.sm,
+  },
+  readArabic: {
+    fontFamily: typography.fontFamily.arabic,
+    color: theme.textArabic,
+    textAlign: 'right',
+    writingDirection: 'rtl',
+  },
+  ayahMarker: {
+    fontFamily: typography.fontFamily.arabic,
+    color: theme.accentGreen,
   },
   ayahHeader: {
     flexDirection: 'row',
