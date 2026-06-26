@@ -96,10 +96,15 @@ export default function QuranReaderScreen(): React.JSX.Element {
     artist: translationReciterFor(language).name,
   });
 
+  const translationTextFor = (a: QuranAyah) =>
+    language === 'ur' ? a.urdu : a.translation;
+
   const tracks = useMemo(
     () =>
       (ayahs ?? []).flatMap((a: QuranAyah) =>
-        playTranslation ? [buildTrack(a), buildTranslationTrack(a)] : [buildTrack(a)]
+        playTranslation && !!translationTextFor(a)
+          ? [buildTrack(a), buildTranslationTrack(a)]
+          : [buildTrack(a)]
       ),
     [ayahs, surahName, surahNumber, reciter, playTranslation, language]
   );
@@ -226,8 +231,7 @@ export default function QuranReaderScreen(): React.JSX.Element {
         ) : (
           ayahs.map((ayah: QuranAyah) => {
             const bookmarked = bookmarks.some((b) => b.id === ayah.id);
-            const translation =
-              language === 'ur' && ayah.urdu ? ayah.urdu : ayah.translation;
+            const translation = translationTextFor(ayah);
 
             return (
               <View key={ayah.id} style={styles.ayahCard}>
