@@ -10,8 +10,6 @@ export type RootStackParamList = {
   BookDetail: { bookId: string; bookTitle: string };
   Reader: { bookId: string; chapterId: string; contentId?: string };
   QuranReader: {
-    bookId: string;
-    chapterId: string;
     surahNumber: number;
     surahName: string;
   };

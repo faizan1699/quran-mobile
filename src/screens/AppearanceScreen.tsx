@@ -20,6 +20,7 @@ import { RootStackParamList } from '@/navigation/types';
 import { usePreferencesStore, FontScale } from '@/store/usePreferencesStore';
 import { GlobalHeader } from '@/components/GlobalHeader';
 import { AppSwitch } from '@/components/AppSwitch';
+import { ColorPicker } from '@/components/ColorPicker';
 import { borderRadius, spacing, typography, shadows } from '@/tokens';
 
 type IconProps = { name: string; size?: number; color?: string };
@@ -438,7 +439,14 @@ export default function AppearanceScreen(): React.JSX.Element {
             <Text style={[styles.modalTitle, isRTL && styles.textRTL]}>
               {t('settings.customColor')}
             </Text>
-            <View style={styles.modalPreviewRow}>
+            {!isWeb ? (
+              <ColorPicker
+                value={hexValid ? normalizeHex(hexInput) ?? '#1B4332' : '#1B4332'}
+                onChange={onWebColorChange}
+                theme={theme}
+              />
+            ) : null}
+            <View style={[styles.modalPreviewRow, !isWeb && styles.modalHexRow]}>
               {isWeb
                 ? React.createElement('input' as never, {
                   type: 'color',
@@ -461,18 +469,7 @@ export default function AppearanceScreen(): React.JSX.Element {
                     cursor: 'pointer',
                   },
                 })
-                : (
-                  <View
-                    style={[
-                      styles.modalPreviewSwatch,
-                      {
-                        backgroundColor: hexValid
-                          ? normalizeHex(hexInput) ?? '#FFFFFF'
-                          : theme.bgMuted,
-                      },
-                    ]}
-                  />
-                )}
+                : null}
               <TextInput
                 style={styles.hexInput}
                 value={hexInput}
@@ -785,12 +782,8 @@ const createStyles = (theme: Theme) =>
       alignItems: 'center',
       gap: spacing[3],
     },
-    modalPreviewSwatch: {
-      width: 44,
-      height: 44,
-      borderRadius: borderRadius.button,
-      borderWidth: 1,
-      borderColor: theme.border,
+    modalHexRow: {
+      marginTop: spacing[3],
     },
     hexInput: {
       flex: 1,

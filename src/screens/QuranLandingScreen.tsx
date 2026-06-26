@@ -42,8 +42,6 @@ export default function QuranLandingScreen(): React.JSX.Element {
       return;
     }
     navigation.navigate('QuranReader', {
-      bookId: lastRead.bookId,
-      chapterId: lastRead.chapterId,
       surahNumber: lastRead.surahNumber,
       surahName: lastRead.surahName,
     });

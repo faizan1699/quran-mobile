@@ -1,4 +1,4 @@
-interface Rgb {
+export interface Rgb {
   r: number;
   g: number;
   b: number;
@@ -26,7 +26,7 @@ export function isValidHex(input: string): boolean {
   return normalizeHex(input) !== null;
 }
 
-function hexToRgb(hex: string): Rgb {
+export function hexToRgb(hex: string): Rgb {
   const normalized = normalizeHex(hex) ?? '#000000';
   const value = normalized.slice(1);
   return {
@@ -36,7 +36,7 @@ function hexToRgb(hex: string): Rgb {
   };
 }
 
-function rgbToHex({ r, g, b }: Rgb): string {
+export function rgbToHex({ r, g, b }: Rgb): string {
   const toHex = (n: number) =>
     clamp(Math.round(n), 0, 255).toString(16).padStart(2, '0');
   return `#${toHex(r)}${toHex(g)}${toHex(b)}`.toUpperCase();

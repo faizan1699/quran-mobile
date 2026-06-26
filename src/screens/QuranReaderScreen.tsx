@@ -30,7 +30,7 @@ import {
 import { useTheme, Theme } from '@/theme';
 import { colors, spacing, typography, borderRadius, shadows } from '@/tokens';
 import { RootStackParamList } from '@/navigation/types';
-import { Content } from '@shared-types';
+import { QuranAyah } from '@shared-types';
 
 type QuranReaderRouteProp = RouteProp<RootStackParamList, 'QuranReader'>;
 
@@ -43,13 +43,10 @@ export default function QuranReaderScreen(): React.JSX.Element {
   const { theme } = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
 
-  const { bookId, chapterId, surahNumber, surahName } = route.params;
+  const { surahNumber, surahName } = route.params;
   const meta = getSurahMeta(surahNumber);
 
-  const { data: ayahs, isLoading, isError, refetch } = useSurahAyahs(
-    bookId,
-    chapterId
-  );
+  const { data: ayahs, isLoading, isError, refetch } = useSurahAyahs(surahNumber);
 
   const { data: tafseerSections } = useTafseerSections(surahNumber);
 
@@ -74,9 +71,7 @@ export default function QuranReaderScreen(): React.JSX.Element {
   const reciter = getReciter(reciterId);
 
   const playTranslation = usePreferencesStore((s) => s.playTranslation);
-  const highlightWords = usePreferencesStore((s) => s.highlightWords);
   const setPref = usePreferencesStore((s) => s.setPref);
-  const reciterKey = String(reciter.quranComId);
 
   const [openTafseer, setOpenTafseer] = useState<Record<string, boolean>>({});
   const [fontModifier, setFontModifier] = useState(0); // 0 -> 4 -> 8 -> 12
@@ -85,66 +80,52 @@ export default function QuranReaderScreen(): React.JSX.Element {
   const toggleTafseer = (id: string) =>
     setOpenTafseer((prev) => ({ ...prev, [id]: !prev[id] }));
 
-  const timingFor = (a: Content) =>
-    highlightWords ? a.wordTimings?.[reciterKey] ?? null : null;
+  const buildTrack = (a: QuranAyah) => ({
+    id: a.id,
+    url: ayahAudioUrl(reciter, surahNumber, a.ayah),
+    title: `${surahName} ${surahNumber}:${a.ayah}`,
+    artist: reciter.name,
+  });
 
-  const buildTrack = (a: Content) => {
-    const timing = timingFor(a);
-    return {
-      id: a.id,
-      url: timing?.audioUrl || ayahAudioUrl(reciter, surahNumber, a.sequenceNumber),
-      title: `${surahName} ${surahNumber}:${a.sequenceNumber}`,
-      artist: reciter.name,
-      chapterId,
-      bookId,
-    };
-  };
-
-  const buildTranslationTrack = (a: Content) => ({
+  const buildTranslationTrack = (a: QuranAyah) => ({
     id: `${a.id}::ur`,
-    url: translationAudioUrl(surahNumber, a.sequenceNumber),
-    title: `${surahName} ${surahNumber}:${a.sequenceNumber} — ${
+    url: translationAudioUrl(surahNumber, a.ayah),
+    title: `${surahName} ${surahNumber}:${a.ayah} — ${
       language === 'ur' ? 'ترجمہ' : 'Translation'
     }`,
     artist: URDU_TRANSLATION.name,
-    chapterId,
-    bookId,
   });
 
   const tracks = useMemo(
     () =>
-      (ayahs ?? []).flatMap((a: Content) =>
+      (ayahs ?? []).flatMap((a: QuranAyah) =>
         playTranslation ? [buildTrack(a), buildTranslationTrack(a)] : [buildTrack(a)]
       ),
-    [ayahs, surahName, surahNumber, chapterId, bookId, reciter, playTranslation, highlightWords, language]
+    [ayahs, surahName, surahNumber, reciter, playTranslation, language]
   );
 
   // Remember the surah as the last-read position when it opens.
   useEffect(() => {
     if (ayahs && ayahs.length > 0) {
       setLastRead({
-        bookId,
-        chapterId,
         surahNumber,
         surahName,
-        ayahNumber: ayahs[0].sequenceNumber,
+        ayahNumber: ayahs[0].ayah,
       });
     }
-  }, [ayahs, bookId, chapterId, surahNumber, surahName, setLastRead]);
+  }, [ayahs, surahNumber, surahName, setLastRead]);
 
   const cycleFont = () =>
     setFontModifier((p) => (p === 0 ? 4 : p === 4 ? 8 : p === 8 ? 12 : 0));
 
-  const markRead = (ayah: Content) =>
+  const markRead = (ayah: QuranAyah) =>
     setLastRead({
-      bookId,
-      chapterId,
       surahNumber,
       surahName,
-      ayahNumber: ayah.sequenceNumber,
+      ayahNumber: ayah.ayah,
     });
 
-  const playAyah = async (ayah: Content) => {
+  const playAyah = async (ayah: QuranAyah) => {
     markRead(ayah);
     await playTrack(buildTrack(ayah));
     await setQueue(tracks);
@@ -205,16 +186,6 @@ export default function QuranReaderScreen(): React.JSX.Element {
               {language === 'ur' ? 'ترجمہ' : 'Tr'}
             </Text>
           </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.fontBtn, highlightWords && styles.toggleActive]}
-            onPress={() => setPref('highlightWords', !highlightWords)}
-            activeOpacity={0.8}
-          >
-            <Text style={styles.fontIcon}>✨</Text>
-            <Text style={[styles.fontText, highlightWords && styles.toggleActiveText]}>
-              {language === 'ur' ? 'لفظ' : 'Hl'}
-            </Text>
-          </TouchableOpacity>
           <TouchableOpacity style={styles.playSurahBtn} onPress={playSurah} activeOpacity={0.8}>
             <Text style={styles.playSurahText}>▶ {t('quran.playSurah')}</Text>
           </TouchableOpacity>
@@ -253,10 +224,10 @@ export default function QuranReaderScreen(): React.JSX.Element {
             <Text style={styles.emptyText}>{t('quran.noAyahs')}</Text>
           </View>
         ) : (
-          ayahs.map((ayah: Content) => {
+          ayahs.map((ayah: QuranAyah) => {
             const bookmarked = bookmarks.some((b) => b.id === ayah.id);
             const translation =
-              language === 'ur' && ayah.urduText ? ayah.urduText : ayah.translationText;
+              language === 'ur' && ayah.urdu ? ayah.urdu : ayah.translation;
 
             return (
               <View key={ayah.id} style={styles.ayahCard}>
@@ -264,7 +235,7 @@ export default function QuranReaderScreen(): React.JSX.Element {
                 <View style={[styles.ayahHeader, isRTL && styles.rowRTL]}>
                   <View style={styles.ayahBadge}>
                     <Text style={styles.ayahBadgeText}>
-                      {surahNumber}:{ayah.sequenceNumber}
+                      {surahNumber}:{ayah.ayah}
                     </Text>
                   </View>
 
@@ -274,12 +245,10 @@ export default function QuranReaderScreen(): React.JSX.Element {
                       onPress={() =>
                         toggleBookmark({
                           id: ayah.id,
-                          bookId,
-                          chapterId,
                           surahNumber,
                           surahName,
-                          ayahNumber: ayah.sequenceNumber,
-                          snippet: ayah.verseText.slice(0, 40),
+                          ayahNumber: ayah.ayah,
+                          snippet: ayah.arabic.slice(0, 40),
                         })
                       }
                       activeOpacity={0.7}
@@ -295,7 +264,7 @@ export default function QuranReaderScreen(): React.JSX.Element {
                         navigation.navigate('NoteEditor', {
                           surahNumber,
                           surahName,
-                          ayahNumber: ayah.sequenceNumber,
+                          ayahNumber: ayah.ayah,
                         })
                       }
                       activeOpacity={0.7}
@@ -316,8 +285,7 @@ export default function QuranReaderScreen(): React.JSX.Element {
                 {/* Arabic */}
                 <AyahArabic
                   trackId={ayah.id}
-                  words={highlightWords ? ayah.wordTimings?.[reciterKey]?.words : undefined}
-                  plainText={ayah.verseText}
+                  plainText={ayah.arabic}
                   textStyle={[
                     styles.arabic,
                     { fontSize: sizeArabic, lineHeight: sizeArabic * typography.lineHeight.arabic },
@@ -361,9 +329,8 @@ export default function QuranReaderScreen(): React.JSX.Element {
                 </TouchableOpacity>
 
                 {openTafseer[ayah.id] && (() => {
-                  const section = sectionForAyah(ayah.sequenceNumber);
+                  const section = sectionForAyah(ayah.ayah);
                   const sectionText = section?.text;
-                  const fallback = ayah.tafseerText;
                   return (
                     <View style={styles.tafseerBox}>
                       {section && (
@@ -379,7 +346,7 @@ export default function QuranReaderScreen(): React.JSX.Element {
                           (sectionText || language === 'ur') && styles.tafseerUrdu,
                         ]}
                       >
-                        {sectionText || fallback || t('quran.tafseerSoon')}
+                        {sectionText || t('quran.tafseerSoon')}
                       </Text>
                     </View>
                   );

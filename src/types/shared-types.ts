@@ -135,6 +135,21 @@ export interface QuranTafseerSection {
   status: ContentStatus;
 }
 
+export interface QuranAyah {
+  id: string;
+  surah: number;
+  ayah: number;
+  arabic: string;
+  translation?: string | null;
+  urdu?: string | null;
+  status: ContentStatus;
+}
+
+export interface QuranSurahSummary {
+  surah: number;
+  ayahCount: number;
+}
+
 export interface DailyContent {
   id: string;
   date: string;

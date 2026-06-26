@@ -21,8 +21,8 @@ interface AudioTrackInfo {
   url: string;
   title: string;
   artist: string;
-  chapterId: string;
-  bookId: string;
+  chapterId?: string;
+  bookId?: string;
   hadithNumber?: number;
 }
 

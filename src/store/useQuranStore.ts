@@ -4,19 +4,14 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 /** Where the user last left off reading, used for "Continue reading". */
 export interface LastRead {
-  bookId: string;
-  chapterId: string;
   surahNumber: number;
   surahName: string;
   ayahNumber: number;
   updatedAt: number;
 }
 
-/** A bookmarked ayah the user can jump back to. */
 export interface QuranBookmark {
-  id: string; // contentId of the ayah (unique)
-  bookId: string;
-  chapterId: string;
+  id: string;
   surahNumber: number;
   surahName: string;
   ayahNumber: number;
