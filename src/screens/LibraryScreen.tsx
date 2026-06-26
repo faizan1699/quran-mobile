@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { StyleSheet, View, Text, TextInput, TouchableOpacity, SafeAreaView } from 'react-native';
+import { StyleSheet, View, Text, TextInput, TouchableOpacity } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, NavigationProp } from '@react-navigation/native';
 import { FlashList } from '@shopify/flash-list';
 import { useTranslation } from '@/i18n';
@@ -84,7 +85,7 @@ export default function LibraryScreen(): React.JSX.Element {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView edges={['top']} style={styles.safeArea}>
       {/* Global Header */}
       <GlobalHeader />
 
@@ -146,7 +147,6 @@ export default function LibraryScreen(): React.JSX.Element {
           <FlashList
             data={shelves}
             keyExtractor={(item) => item.category}
-            estimatedItemSize={240}
             showsVerticalScrollIndicator={false}
             renderItem={({ item }) => (
               <View style={styles.shelfContainer}>
@@ -160,7 +160,6 @@ export default function LibraryScreen(): React.JSX.Element {
                   <FlashList
                     data={item.books}
                     horizontal
-                    estimatedItemSize={120}
                     showsHorizontalScrollIndicator={false}
                     keyExtractor={(book) => book.id}
                     renderItem={({ item: book }) => (
@@ -238,7 +237,7 @@ const createStyles = (theme: Theme) =>
     alignItems: 'center',
   },
   segmentButtonActive: {
-    backgroundColor: colors.primary[800], // Brand green active segment
+    backgroundColor: theme.accentGreen, // Brand green active segment
   },
   segmentText: {
     fontFamily: typography.fontFamily.english,

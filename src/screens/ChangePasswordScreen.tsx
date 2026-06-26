@@ -5,12 +5,12 @@ import {
   Text,
   ScrollView,
   TouchableOpacity,
-  SafeAreaView,
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
   Alert,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, NavigationProp } from '@react-navigation/native';
 import { Ionicons as RawIonicons } from '@expo/vector-icons';
 import { useTranslation } from '@/i18n';
@@ -60,7 +60,7 @@ export default function ChangePasswordScreen(): React.JSX.Element {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView edges={['top', 'bottom']} style={styles.safeArea}>
       {/* Top bar */}
       <View style={[styles.topBar, isRTL && styles.rowRTL]}>
         <TouchableOpacity
@@ -204,7 +204,7 @@ const createStyles = (theme: Theme) =>
     primaryBtn: {
       height: 52,
       borderRadius: borderRadius.button,
-      backgroundColor: colors.primary[800],
+      backgroundColor: theme.accentGreen,
       justifyContent: 'center',
       alignItems: 'center',
       marginTop: spacing[1],

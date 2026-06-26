@@ -5,18 +5,18 @@ import {
   Text,
   ScrollView,
   TouchableOpacity,
-  SafeAreaView,
   Alert,
   ActivityIndicator,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons as RawIonicons } from '@expo/vector-icons';
 import { useQueryClient } from '@tanstack/react-query';
 import { useNavigation, NavigationProp } from '@react-navigation/native';
 import { useTranslation } from '@/i18n';
 import { useTheme, Theme } from '@/theme';
-import { RootStackParamList } from '@/navigation/types';
+import { RootStackParamList, MoreStackParamList } from '@/navigation/types';
 import { useUserStore, FiqhMethod, LocationData } from '@/store/useUserStore';
-import { usePreferencesStore, FontScale } from '@/store/usePreferencesStore';
+import { usePreferencesStore } from '@/store/usePreferencesStore';
 import { useDeviceLocation } from '@/hooks/useDeviceLocation';
 import { clearCache } from '@/services/offlineCache';
 import { GlobalHeader } from '@/components/GlobalHeader';
@@ -64,13 +64,6 @@ function ToggleRow({
   );
 }
 
-const FONT_SCALE_OPTIONS: { value: FontScale; labelKey: string; preview: number }[] = [
-  { value: 'small', labelKey: 'settings.textSizeSmall', preview: 13 },
-  { value: 'default', labelKey: 'settings.textSizeDefault', preview: 15 },
-  { value: 'large', labelKey: 'settings.textSizeLarge', preview: 18 },
-  { value: 'xlarge', labelKey: 'settings.textSizeXLarge', preview: 21 },
-];
-
 const MOCK_CITIES: LocationData[] = [
   { name: 'Mecca, SA', latitude: 21.4225, longitude: 39.8262 },
   { name: 'Karachi, PK', latitude: 24.8607, longitude: 67.0011 },
@@ -80,11 +73,12 @@ const MOCK_CITIES: LocationData[] = [
 
 export default function SettingsScreen(): React.JSX.Element {
   const { t, language, changeLanguage, isRTL } = useTranslation();
-  const { theme, mode, isDark, setMode } = useTheme();
+  const { theme } = useTheme();
   const { fiqhMethod, setFiqhMethod, location, setLocation } = useUserStore();
   const { detecting, error: locationError, detectLocation } = useDeviceLocation();
   const queryClient = useQueryClient();
-  const navigation = useNavigation<NavigationProp<RootStackParamList>>();
+  const navigation =
+    useNavigation<NavigationProp<RootStackParamList & MoreStackParamList>>();
   const styles = useMemo(() => createStyles(theme), [theme]);
 
   const {
@@ -94,12 +88,8 @@ export default function SettingsScreen(): React.JSX.Element {
     autoPlayNextAyah,
     downloadOverWifiOnly,
     downloadedIds,
-    fontScale,
     setPref,
-    setFontScale,
   } = usePreferencesStore();
-
-  const followSystem = mode === 'system';
 
   const handleClearCache = () => {
     Alert.alert(
@@ -154,7 +144,7 @@ export default function SettingsScreen(): React.JSX.Element {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView edges={['top']} style={styles.safeArea}>
       <GlobalHeader />
 
       <ScrollView
@@ -187,66 +177,27 @@ export default function SettingsScreen(): React.JSX.Element {
           </TouchableOpacity>
         </View>
 
-        {/* Appearance / Theme */}
         <View style={styles.sectionCard}>
-          <Text style={[styles.sectionHeading, isRTL && styles.textRTL]}>
-            {t('theme.appearance')}
-          </Text>
-
-          <ToggleRow
-            label={t('settings.darkMode')}
-            description={t('settings.darkModeDesc')}
-            value={isDark}
-            onValueChange={(v) => setMode(v ? 'dark' : 'light')}
-            disabled={followSystem}
-            isRTL={isRTL}
-            styles={styles}
-          />
-          <View style={styles.toggleDivider} />
-          <ToggleRow
-            label={t('settings.matchDevice')}
-            description={t('settings.matchDeviceDesc')}
-            value={followSystem}
-            onValueChange={(v) => setMode(v ? 'system' : isDark ? 'dark' : 'light')}
-            isRTL={isRTL}
-            styles={styles}
-          />
-        </View>
-
-        {/* Text Size */}
-        <View style={styles.sectionCard}>
-          <Text style={[styles.sectionHeading, isRTL && styles.textRTL]}>
-            {t('settings.textSize')}
-          </Text>
-          <View style={[styles.segment, isRTL && styles.rowRTL]}>
-            {FONT_SCALE_OPTIONS.map((opt) => {
-              const active = fontScale === opt.value;
-              return (
-                <TouchableOpacity
-                  key={opt.value}
-                  style={[styles.fontScaleItem, active && styles.segmentItemActive]}
-                  onPress={() => setFontScale(opt.value)}
-                  activeOpacity={0.85}
-                >
-                  <Text
-                    style={[
-                      styles.fontScaleGlyph,
-                      active && styles.segmentTextActive,
-                      { fontSize: opt.preview },
-                    ]}
-                  >
-                    A
-                  </Text>
-                  <Text
-                    style={[styles.fontScaleLabel, active && styles.segmentTextActive]}
-                    numberOfLines={1}
-                  >
-                    {t(opt.labelKey)}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
+          <TouchableOpacity
+            style={[styles.clearCacheButton, isRTL && styles.rowRTL]}
+            onPress={() => navigation.navigate('Appearance')}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="color-palette-outline" size={18} color={theme.textBrandGreen} />
+            <View style={styles.clearCacheTextCol}>
+              <Text style={[styles.clearCacheLabel, isRTL && styles.textRTL]}>
+                {t('theme.appearance')}
+              </Text>
+              <Text style={[styles.clearCacheDesc, isRTL && styles.textRTL]}>
+                {t('settings.appearanceManage')}
+              </Text>
+            </View>
+            <Ionicons
+              name={isRTL ? 'chevron-back' : 'chevron-forward'}
+              size={16}
+              color={theme.textMuted}
+            />
+          </TouchableOpacity>
         </View>
 
         {/* Language Options Row */}
@@ -526,7 +477,7 @@ const createStyles = (theme: Theme) =>
       borderRadius: borderRadius.full,
     },
     segmentItemActive: {
-      backgroundColor: colors.primary[800],
+      backgroundColor: theme.accentGreen,
     },
     segmentText: {
       fontFamily: typography.fontFamily.english,
@@ -602,8 +553,8 @@ const createStyles = (theme: Theme) =>
       borderColor: theme.border,
     },
     optionButtonActive: {
-      backgroundColor: colors.primary[800],
-      borderColor: colors.primary[800],
+      backgroundColor: theme.accentGreen,
+      borderColor: theme.accentGreen,
     },
     optionText: {
       fontFamily: typography.fontFamily.english,
@@ -630,8 +581,8 @@ const createStyles = (theme: Theme) =>
       borderColor: theme.border,
     },
     gridButtonActive: {
-      backgroundColor: colors.primary[800],
-      borderColor: colors.primary[800],
+      backgroundColor: theme.accentGreen,
+      borderColor: theme.accentGreen,
     },
     gridText: {
       fontFamily: typography.fontFamily.english,
@@ -647,7 +598,7 @@ const createStyles = (theme: Theme) =>
       alignItems: 'center',
       justifyContent: 'center',
       gap: spacing[2],
-      backgroundColor: colors.primary[800],
+      backgroundColor: theme.accentGreen,
       borderRadius: borderRadius.button,
       paddingVertical: 12,
       paddingHorizontal: spacing[3],
@@ -687,7 +638,7 @@ const createStyles = (theme: Theme) =>
       borderBottomColor: theme.borderDivider,
     },
     listRowActive: {
-      backgroundColor: theme.isDark ? 'rgba(58,158,110,0.15)' : colors.primary[100],
+      backgroundColor: theme.isDark ? 'rgba(58,158,110,0.15)' : theme.accentSoft,
       borderBottomColor: 'transparent',
     },
     listRowLabel: {
@@ -765,7 +716,7 @@ const createStyles = (theme: Theme) =>
       alignItems: 'center',
       gap: spacing[2],
       marginTop: spacing[3],
-      backgroundColor: theme.isDark ? 'rgba(58,158,110,0.15)' : colors.primary[100],
+      backgroundColor: theme.isDark ? 'rgba(58,158,110,0.15)' : theme.accentSoft,
       borderRadius: borderRadius.button,
       paddingVertical: spacing[2],
       paddingHorizontal: spacing[3],

@@ -103,7 +103,7 @@ const createStyles = (theme: Theme) =>
       borderRadius: borderRadius.full,
     },
     tabActive: {
-      backgroundColor: colors.primary[800],
+      backgroundColor: theme.accentGreen,
     },
     tabLabel: {
       fontFamily: typography.fontFamily.english,

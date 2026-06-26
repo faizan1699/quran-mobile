@@ -93,6 +93,19 @@ export interface Chapter {
   sequenceOrder: number;
 }
 
+export interface TimedWord {
+  text: string;
+  start: number;
+  end: number;
+}
+
+export interface ReciterTiming {
+  audioUrl: string;
+  words: TimedWord[];
+}
+
+export type WordTimings = Record<string, ReciterTiming>;
+
 export interface Content {
   id: string;
   chapterId: string;
@@ -101,11 +114,40 @@ export interface Content {
   urduText?: string | null;
   tafseerText?: string | null;
   audioUrl?: string | null;
+  wordTimings?: WordTimings | null;
   sequenceNumber: number;
   hadithNumber?: number | null;
   narrator?: string | null;
   status: ContentStatus;
   createdAt: string;
+}
+
+export interface QuranTafseerSection {
+  id: string;
+  surah: number;
+  ayahRange?: string | null;
+  ayahStart?: number | null;
+  ayahEnd?: number | null;
+  jild?: number | null;
+  sourceFile: string;
+  text: string;
+  sequence: number;
+  status: ContentStatus;
+}
+
+export interface QuranAyah {
+  id: string;
+  surah: number;
+  ayah: number;
+  arabic: string;
+  translation?: string | null;
+  urdu?: string | null;
+  status: ContentStatus;
+}
+
+export interface QuranSurahSummary {
+  surah: number;
+  ayahCount: number;
 }
 
 export interface DailyContent {

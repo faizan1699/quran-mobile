@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { StyleSheet, View, Text, ScrollView, TouchableOpacity, SafeAreaView } from 'react-native';
+import { StyleSheet, View, Text, ScrollView, TouchableOpacity } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRoute, useNavigation, RouteProp, NavigationProp } from '@react-navigation/native';
 import { useTranslation } from '@/i18n';
 import { useAudioStore } from '@/store/useAudioStore';
@@ -7,7 +8,7 @@ import { GlobalHeader } from '@/components/GlobalHeader';
 import { AudioPlayerBar } from '@/components/AudioPlayerBar';
 import { offlineStorageService, OfflineContent } from '@/services/offlineStorageService';
 import { useTheme, Theme } from '@/theme';
-import { colors, borderRadius, spacing, typography, shadows } from '@/tokens';
+import { borderRadius, spacing, typography, shadows } from '@/tokens';
 import { RootStackParamList } from '@/navigation/types';
 
 type ReaderScreenRouteProp = RouteProp<RootStackParamList, 'Reader'>;
@@ -59,7 +60,7 @@ export default function ReaderScreen(): React.JSX.Element {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView edges={['top', 'bottom']} style={styles.safeArea}>
       {/* Global Header */}
       <GlobalHeader />
 
@@ -271,7 +272,7 @@ const createStyles = (theme: Theme) =>
     color: theme.textGold,
   },
   playVerseBtn: {
-    backgroundColor: colors.primary[100],
+    backgroundColor: theme.accentSoft,
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: borderRadius.badge,
@@ -279,7 +280,7 @@ const createStyles = (theme: Theme) =>
   playVerseIcon: {
     fontFamily: typography.fontFamily.english,
     fontSize: 10,
-    color: colors.primary[800],
+    color: theme.accentGreen,
     fontWeight: 'bold',
   },
   narratorText: {

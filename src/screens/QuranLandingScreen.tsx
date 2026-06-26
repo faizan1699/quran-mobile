@@ -5,9 +5,9 @@ import {
   Text,
   ScrollView,
   TouchableOpacity,
-  SafeAreaView,
   Alert,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { useTranslation } from '@/i18n';
 import { useTheme, Theme } from '@/theme';
@@ -42,8 +42,6 @@ export default function QuranLandingScreen(): React.JSX.Element {
       return;
     }
     navigation.navigate('QuranReader', {
-      bookId: lastRead.bookId,
-      chapterId: lastRead.chapterId,
       surahNumber: lastRead.surahNumber,
       surahName: lastRead.surahName,
     });
@@ -102,15 +100,15 @@ export default function QuranLandingScreen(): React.JSX.Element {
       icon: '🟡',
       label: 'Allah Names',
       labelUrdu: 'اسمائے حسنیٰ',
-      onPress: comingSoon,
-      comingSoon: true,
+      onPress: () =>
+        navigation.navigate('IbadaatStack', { screen: 'AllahNames' }),
     },
   ];
 
   const lastReadMeta = lastRead ? getSurahMeta(lastRead.surahNumber) : undefined;
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView edges={['top']} style={styles.safeArea}>
       <GlobalHeader />
 
       <ScrollView
@@ -213,7 +211,7 @@ const createStyles = (theme: Theme) =>
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: colors.primary[800],
+    backgroundColor: theme.accentGreen,
     borderRadius: borderRadius.card,
     padding: spacing.cardPaddingLg,
     borderWidth: 1,
@@ -249,7 +247,7 @@ const createStyles = (theme: Theme) =>
     borderRadius: borderRadius.card,
     padding: spacing.cardPadding,
     borderWidth: 1,
-    borderColor: colors.primary[100],
+    borderColor: theme.accentSoft,
     ...shadows.sm,
   },
   continueRow: {
@@ -332,7 +330,7 @@ const createStyles = (theme: Theme) =>
     minWidth: 20,
     height: 20,
     borderRadius: 10,
-    backgroundColor: colors.primary[600],
+    backgroundColor: theme.accentGreen,
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 5,

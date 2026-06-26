@@ -5,9 +5,9 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  SafeAreaView,
   ScrollView,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, NavigationProp } from '@react-navigation/native';
 import { useTranslation } from '@/i18n';
 import { useTheme, Theme } from '@/theme';
@@ -38,7 +38,7 @@ export default function AllahNamesScreen(): React.JSX.Element {
   }, [searchQuery]);
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView edges={['top']} style={styles.safeArea}>
       <GlobalHeader />
 
       <View style={[styles.subHeader, isRTL && styles.rowRTL]}>
@@ -193,7 +193,7 @@ const createStyles = (theme: Theme) =>
       width: 36,
       height: 36,
       borderRadius: 18,
-      backgroundColor: colors.primary[800],
+      backgroundColor: theme.accentGreen,
       borderWidth: 1,
       borderColor: colors.gold[500],
       justifyContent: 'center',

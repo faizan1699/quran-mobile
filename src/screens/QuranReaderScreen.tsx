@@ -5,21 +5,32 @@ import {
   Text,
   ScrollView,
   TouchableOpacity,
-  SafeAreaView,
   ActivityIndicator,
+  Modal,
+  Pressable,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRoute, useNavigation, RouteProp } from '@react-navigation/native';
 import { useTranslation } from '@/i18n';
 import { useAudioStore } from '@/store/useAudioStore';
 import { useQuranStore } from '@/store/useQuranStore';
+import { usePreferencesStore } from '@/store/usePreferencesStore';
 import { GlobalHeader } from '@/components/GlobalHeader';
 import { AudioPlayerBar } from '@/components/AudioPlayerBar';
-import { useSurahAyahs } from '@/hooks/useQuran';
+import { AyahArabic } from '@/components/AyahArabic';
+import { useSurahAyahs, useTafseerSections } from '@/hooks/useQuran';
 import { getSurahMeta } from '@/data/surahMeta';
+import {
+  RECITERS,
+  getReciter,
+  ayahAudioUrl,
+  translationAudioUrl,
+  URDU_TRANSLATION,
+} from '@/data/reciters';
 import { useTheme, Theme } from '@/theme';
 import { colors, spacing, typography, borderRadius, shadows } from '@/tokens';
 import { RootStackParamList } from '@/navigation/types';
-import { Content } from '@shared-types';
+import { QuranAyah } from '@shared-types';
 
 type QuranReaderRouteProp = RouteProp<RootStackParamList, 'QuranReader'>;
 
@@ -32,13 +43,21 @@ export default function QuranReaderScreen(): React.JSX.Element {
   const { theme } = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
 
-  const { bookId, chapterId, surahNumber, surahName } = route.params;
+  const { surahNumber, surahName } = route.params;
   const meta = getSurahMeta(surahNumber);
 
-  const { data: ayahs, isLoading, isError, refetch } = useSurahAyahs(
-    bookId,
-    chapterId
-  );
+  const { data: ayahs, isLoading, isError, refetch } = useSurahAyahs(surahNumber);
+
+  const { data: tafseerSections } = useTafseerSections(surahNumber);
+
+  const sectionForAyah = (ayahNumber: number) =>
+    tafseerSections?.find(
+      (s) =>
+        s.ayahStart != null &&
+        s.ayahEnd != null &&
+        ayahNumber >= s.ayahStart &&
+        ayahNumber <= s.ayahEnd
+    ) ?? null;
 
   const playTrack = useAudioStore((s) => s.playTrack);
   const setQueue = useAudioStore((s) => s.setQueue);
@@ -47,68 +66,68 @@ export default function QuranReaderScreen(): React.JSX.Element {
   const toggleBookmark = useQuranStore((s) => s.toggleBookmark);
   const setLastRead = useQuranStore((s) => s.setLastRead);
 
+  const reciterId = usePreferencesStore((s) => s.reciterId);
+  const setReciterId = usePreferencesStore((s) => s.setReciterId);
+  const reciter = getReciter(reciterId);
+
+  const playTranslation = usePreferencesStore((s) => s.playTranslation);
+  const setPref = usePreferencesStore((s) => s.setPref);
+
   const [openTafseer, setOpenTafseer] = useState<Record<string, boolean>>({});
   const [fontModifier, setFontModifier] = useState(0); // 0 -> 4 -> 8 -> 12
+  const [reciterModalOpen, setReciterModalOpen] = useState(false);
 
   const toggleTafseer = (id: string) =>
     setOpenTafseer((prev) => ({ ...prev, [id]: !prev[id] }));
 
-  // Build playable tracks once per ayah set.
+  const buildTrack = (a: QuranAyah) => ({
+    id: a.id,
+    url: ayahAudioUrl(reciter, surahNumber, a.ayah),
+    title: `${surahName} ${surahNumber}:${a.ayah}`,
+    artist: reciter.name,
+  });
+
+  const buildTranslationTrack = (a: QuranAyah) => ({
+    id: `${a.id}::ur`,
+    url: translationAudioUrl(surahNumber, a.ayah),
+    title: `${surahName} ${surahNumber}:${a.ayah} — ${
+      language === 'ur' ? 'ترجمہ' : 'Translation'
+    }`,
+    artist: URDU_TRANSLATION.name,
+  });
+
   const tracks = useMemo(
     () =>
-      (ayahs ?? [])
-        .filter((a: Content) => !!a.audioUrl)
-        .map((a: Content) => ({
-          id: a.id,
-          url: a.audioUrl as string,
-          title: `${surahName} ${surahNumber}:${a.sequenceNumber}`,
-          artist: 'Mishary Rashid Alafasy',
-          chapterId,
-          bookId,
-        })),
-    [ayahs, surahName, surahNumber, chapterId, bookId]
+      (ayahs ?? []).flatMap((a: QuranAyah) =>
+        playTranslation ? [buildTrack(a), buildTranslationTrack(a)] : [buildTrack(a)]
+      ),
+    [ayahs, surahName, surahNumber, reciter, playTranslation, language]
   );
 
   // Remember the surah as the last-read position when it opens.
   useEffect(() => {
     if (ayahs && ayahs.length > 0) {
       setLastRead({
-        bookId,
-        chapterId,
         surahNumber,
         surahName,
-        ayahNumber: ayahs[0].sequenceNumber,
+        ayahNumber: ayahs[0].ayah,
       });
     }
-  }, [ayahs, bookId, chapterId, surahNumber, surahName, setLastRead]);
+  }, [ayahs, surahNumber, surahName, setLastRead]);
 
   const cycleFont = () =>
     setFontModifier((p) => (p === 0 ? 4 : p === 4 ? 8 : p === 8 ? 12 : 0));
 
-  const markRead = (ayah: Content) =>
+  const markRead = (ayah: QuranAyah) =>
     setLastRead({
-      bookId,
-      chapterId,
       surahNumber,
       surahName,
-      ayahNumber: ayah.sequenceNumber,
+      ayahNumber: ayah.ayah,
     });
 
-  const toTrack = (ayah: Content) => ({
-    id: ayah.id,
-    url: ayah.audioUrl as string,
-    title: `${surahName} ${surahNumber}:${ayah.sequenceNumber}`,
-    artist: 'Mishary Rashid Alafasy',
-    chapterId,
-    bookId,
-  });
-
-  const playAyah = async (ayah: Content) => {
-    if (!ayah.audioUrl) return;
+  const playAyah = async (ayah: QuranAyah) => {
     markRead(ayah);
-    // Play the chosen ayah first (sets currentTrack), then register the queue
-    // so playback continues to the next ayah without auto-restarting from #1.
-    await playTrack(toTrack(ayah));
+    await playTrack(buildTrack(ayah));
     await setQueue(tracks);
   };
 
@@ -118,12 +137,17 @@ export default function QuranReaderScreen(): React.JSX.Element {
     await setQueue(tracks);
   };
 
+  const chooseReciter = (id: string) => {
+    setReciterId(id);
+    setReciterModalOpen(false);
+  };
+
   const sizeArabic = typography.fontSize.arabic.md + fontModifier;
   const sizeTranslation = typography.fontSize.base + fontModifier;
   const showBismillah = surahNumber !== 1 && surahNumber !== 9;
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView edges={['top', 'bottom']} style={styles.safeArea}>
       <GlobalHeader />
 
       {/* Control / nav bar */}
@@ -138,9 +162,29 @@ export default function QuranReaderScreen(): React.JSX.Element {
         </TouchableOpacity>
 
         <View style={[styles.controlActions, isRTL && styles.rowRTL]}>
+          <TouchableOpacity
+            style={styles.reciterBtn}
+            onPress={() => setReciterModalOpen(true)}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.reciterIcon}>🎙</Text>
+            <Text style={styles.reciterText} numberOfLines={1}>
+              {language === 'ur' ? reciter.nameUrdu : reciter.name}
+            </Text>
+          </TouchableOpacity>
           <TouchableOpacity style={styles.fontBtn} onPress={cycleFont} activeOpacity={0.8}>
             <Text style={styles.fontIcon}>🅰</Text>
             <Text style={styles.fontText}>+{fontModifier}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.fontBtn, playTranslation && styles.toggleActive]}
+            onPress={() => setPref('playTranslation', !playTranslation)}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.fontIcon}>🌐</Text>
+            <Text style={[styles.fontText, playTranslation && styles.toggleActiveText]}>
+              {language === 'ur' ? 'ترجمہ' : 'Tr'}
+            </Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.playSurahBtn} onPress={playSurah} activeOpacity={0.8}>
             <Text style={styles.playSurahText}>▶ {t('quran.playSurah')}</Text>
@@ -166,7 +210,7 @@ export default function QuranReaderScreen(): React.JSX.Element {
         {/* States */}
         {isLoading ? (
           <View style={styles.centerBox}>
-            <ActivityIndicator size="large" color={colors.primary[800]} />
+            <ActivityIndicator size="large" color={theme.accentGreen} />
           </View>
         ) : isError ? (
           <View style={styles.centerBox}>
@@ -180,10 +224,10 @@ export default function QuranReaderScreen(): React.JSX.Element {
             <Text style={styles.emptyText}>{t('quran.noAyahs')}</Text>
           </View>
         ) : (
-          ayahs.map((ayah: Content) => {
+          ayahs.map((ayah: QuranAyah) => {
             const bookmarked = bookmarks.some((b) => b.id === ayah.id);
             const translation =
-              language === 'ur' && ayah.urduText ? ayah.urduText : ayah.translationText;
+              language === 'ur' && ayah.urdu ? ayah.urdu : ayah.translation;
 
             return (
               <View key={ayah.id} style={styles.ayahCard}>
@@ -191,7 +235,7 @@ export default function QuranReaderScreen(): React.JSX.Element {
                 <View style={[styles.ayahHeader, isRTL && styles.rowRTL]}>
                   <View style={styles.ayahBadge}>
                     <Text style={styles.ayahBadgeText}>
-                      {surahNumber}:{ayah.sequenceNumber}
+                      {surahNumber}:{ayah.ayah}
                     </Text>
                   </View>
 
@@ -201,12 +245,10 @@ export default function QuranReaderScreen(): React.JSX.Element {
                       onPress={() =>
                         toggleBookmark({
                           id: ayah.id,
-                          bookId,
-                          chapterId,
                           surahNumber,
                           surahName,
-                          ayahNumber: ayah.sequenceNumber,
-                          snippet: ayah.verseText.slice(0, 40),
+                          ayahNumber: ayah.ayah,
+                          snippet: ayah.arabic.slice(0, 40),
                         })
                       }
                       activeOpacity={0.7}
@@ -222,7 +264,7 @@ export default function QuranReaderScreen(): React.JSX.Element {
                         navigation.navigate('NoteEditor', {
                           surahNumber,
                           surahName,
-                          ayahNumber: ayah.sequenceNumber,
+                          ayahNumber: ayah.ayah,
                         })
                       }
                       activeOpacity={0.7}
@@ -230,27 +272,26 @@ export default function QuranReaderScreen(): React.JSX.Element {
                       <Text style={styles.bookmarkIcon}>📝</Text>
                     </TouchableOpacity>
 
-                    {ayah.audioUrl && (
-                      <TouchableOpacity
-                        style={styles.playBtn}
-                        onPress={() => playAyah(ayah)}
-                        activeOpacity={0.7}
-                      >
-                        <Text style={styles.playBtnText}>🔊</Text>
-                      </TouchableOpacity>
-                    )}
+                    <TouchableOpacity
+                      style={styles.playBtn}
+                      onPress={() => playAyah(ayah)}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={styles.playBtnText}>🔊</Text>
+                    </TouchableOpacity>
                   </View>
                 </View>
 
                 {/* Arabic */}
-                <Text
-                  style={[
+                <AyahArabic
+                  trackId={ayah.id}
+                  plainText={ayah.arabic}
+                  textStyle={[
                     styles.arabic,
                     { fontSize: sizeArabic, lineHeight: sizeArabic * typography.lineHeight.arabic },
                   ]}
-                >
-                  {ayah.verseText}
-                </Text>
+                  activeStyle={styles.arabicActive}
+                />
 
                 {/* Translation (always shown with the Arabic) */}
                 {!!translation && (
@@ -287,23 +328,80 @@ export default function QuranReaderScreen(): React.JSX.Element {
                   </Text>
                 </TouchableOpacity>
 
-                {openTafseer[ayah.id] && (
-                  <View style={styles.tafseerBox}>
-                    <Text
-                      style={[
-                        styles.tafseerText,
-                        language === 'ur' && styles.tafseerUrdu,
-                      ]}
-                    >
-                      {ayah.tafseerText || t('quran.tafseerSoon')}
-                    </Text>
-                  </View>
-                )}
+                {openTafseer[ayah.id] && (() => {
+                  const section = sectionForAyah(ayah.ayah);
+                  const sectionText = section?.text;
+                  return (
+                    <View style={styles.tafseerBox}>
+                      {section && (
+                        <Text style={styles.tafseerSourceLabel}>
+                          {language === 'ur'
+                            ? `تعلیم القرآن • آیات ${section.ayahRange}`
+                            : `Taleem-ul-Quran • Ayahs ${section.ayahRange}`}
+                        </Text>
+                      )}
+                      <Text
+                        style={[
+                          styles.tafseerText,
+                          (sectionText || language === 'ur') && styles.tafseerUrdu,
+                        ]}
+                      >
+                        {sectionText || t('quran.tafseerSoon')}
+                      </Text>
+                    </View>
+                  );
+                })()}
               </View>
             );
           })
         )}
       </ScrollView>
+
+      <Modal
+        visible={reciterModalOpen}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setReciterModalOpen(false)}
+      >
+        <Pressable style={styles.modalBackdrop} onPress={() => setReciterModalOpen(false)}>
+          <Pressable style={styles.modalCard}>
+            <Text style={[styles.modalTitle, isRTL && styles.textRTL]}>
+              {t('quran.chooseReciter')}
+            </Text>
+            {RECITERS.map((r) => {
+              const active = r.id === reciter.id;
+              return (
+                <TouchableOpacity
+                  key={r.id}
+                  style={[
+                    styles.reciterRow,
+                    active && styles.reciterRowActive,
+                    isRTL && styles.rowRTL,
+                  ]}
+                  onPress={() => chooseReciter(r.id)}
+                  activeOpacity={0.7}
+                >
+                  <View style={styles.reciterRowTextCol}>
+                    <Text
+                      style={[
+                        styles.reciterRowName,
+                        active && styles.reciterRowNameActive,
+                        isRTL && styles.textRTL,
+                      ]}
+                    >
+                      {language === 'ur' ? r.nameUrdu : r.name}
+                    </Text>
+                    <Text style={[styles.reciterRowSub, isRTL && styles.textRTL]}>
+                      {language === 'ur' ? r.name : r.nameUrdu}
+                    </Text>
+                  </View>
+                  {active && <Text style={styles.reciterCheck}>✓</Text>}
+                </TouchableOpacity>
+              );
+            })}
+          </Pressable>
+        </Pressable>
+      </Modal>
 
       <AudioPlayerBar />
     </SafeAreaView>
@@ -349,6 +447,28 @@ const createStyles = (theme: Theme) =>
     alignItems: 'center',
     gap: spacing[2],
   },
+  reciterBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: theme.bgMuted,
+    borderWidth: 1,
+    borderColor: theme.border,
+    borderRadius: borderRadius.button,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    gap: 4,
+    maxWidth: 130,
+  },
+  reciterIcon: {
+    fontSize: 13,
+  },
+  reciterText: {
+    flexShrink: 1,
+    fontFamily: typography.fontFamily.english,
+    fontSize: typography.fontSize.xs,
+    fontWeight: typography.fontWeight.bold,
+    color: theme.textSecondary,
+  },
   fontBtn: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -369,8 +489,15 @@ const createStyles = (theme: Theme) =>
     fontWeight: typography.fontWeight.bold,
     color: theme.textSecondary,
   },
+  toggleActive: {
+    backgroundColor: theme.accentGreen,
+    borderColor: theme.accentGreen,
+  },
+  toggleActiveText: {
+    color: colors.neutral[0],
+  },
   playSurahBtn: {
-    backgroundColor: colors.primary[800],
+    backgroundColor: theme.accentGreen,
     borderRadius: borderRadius.button,
     paddingHorizontal: spacing[3],
     paddingVertical: 6,
@@ -390,7 +517,7 @@ const createStyles = (theme: Theme) =>
     gap: spacing.cardGap,
   },
   surahHeader: {
-    backgroundColor: colors.primary[800],
+    backgroundColor: theme.accentGreen,
     borderRadius: borderRadius.card,
     padding: spacing.cardPaddingLg,
     alignItems: 'center',
@@ -444,6 +571,14 @@ const createStyles = (theme: Theme) =>
     borderLeftColor: colors.gold[500],
     padding: spacing[3],
   },
+  tafseerSourceLabel: {
+    fontFamily: typography.fontFamily.english,
+    fontSize: typography.fontSize.xs,
+    fontWeight: typography.fontWeight.bold,
+    color: colors.gold[600],
+    marginBottom: spacing[2],
+    textAlign: 'right',
+  },
   tafseerText: {
     fontFamily: typography.fontFamily.english,
     fontSize: typography.fontSize.base,
@@ -471,7 +606,7 @@ const createStyles = (theme: Theme) =>
     marginBottom: spacing[3],
   },
   ayahBadge: {
-    backgroundColor: colors.primary[100],
+    backgroundColor: theme.accentSoft,
     borderRadius: borderRadius.badge,
     paddingHorizontal: spacing[3],
     paddingVertical: 4,
@@ -480,7 +615,7 @@ const createStyles = (theme: Theme) =>
     fontFamily: typography.fontFamily.english,
     fontSize: typography.fontSize.xs,
     fontWeight: typography.fontWeight.bold,
-    color: colors.primary[700],
+    color: theme.accentGreen,
   },
   ayahActions: {
     flexDirection: 'row',
@@ -501,7 +636,7 @@ const createStyles = (theme: Theme) =>
     opacity: 1,
   },
   playBtn: {
-    backgroundColor: colors.primary[100],
+    backgroundColor: theme.accentSoft,
     width: 34,
     height: 34,
     borderRadius: 17,
@@ -517,6 +652,9 @@ const createStyles = (theme: Theme) =>
     textAlign: 'right',
     writingDirection: 'rtl',
     marginVertical: spacing[2],
+  },
+  arabicActive: {
+    color: colors.gold[400],
   },
   divider: {
     height: 1,
@@ -551,7 +689,7 @@ const createStyles = (theme: Theme) =>
     textAlign: 'center',
   },
   retryBtn: {
-    backgroundColor: colors.primary[800],
+    backgroundColor: theme.accentGreen,
     borderRadius: borderRadius.button,
     paddingHorizontal: spacing[5],
     paddingVertical: spacing[2],
@@ -561,5 +699,69 @@ const createStyles = (theme: Theme) =>
     fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.bold,
     color: colors.neutral[0],
+  },
+  textRTL: {
+    textAlign: 'right',
+    writingDirection: 'rtl',
+  },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: spacing.pagePadding,
+  },
+  modalCard: {
+    width: '100%',
+    maxWidth: 420,
+    backgroundColor: theme.bgCard,
+    borderRadius: borderRadius.card,
+    borderWidth: 1,
+    borderColor: theme.border,
+    padding: spacing.cardPadding,
+    gap: spacing[1],
+    ...shadows.sm,
+  },
+  modalTitle: {
+    fontFamily: typography.fontFamily.english,
+    fontSize: typography.fontSize.md,
+    fontWeight: typography.fontWeight.bold,
+    color: theme.textBrandGreen,
+    marginBottom: spacing[2],
+  },
+  reciterRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: spacing[3],
+    paddingHorizontal: spacing[3],
+    borderRadius: borderRadius.button,
+    gap: spacing[2],
+  },
+  reciterRowActive: {
+    backgroundColor: theme.accentSoft,
+  },
+  reciterRowTextCol: {
+    flex: 1,
+  },
+  reciterRowName: {
+    fontFamily: typography.fontFamily.english,
+    fontSize: typography.fontSize.base,
+    fontWeight: typography.fontWeight.semibold,
+    color: theme.textPrimary,
+  },
+  reciterRowNameActive: {
+    color: theme.textBrandGreen,
+  },
+  reciterRowSub: {
+    fontFamily: typography.fontFamily.urdu,
+    fontSize: typography.fontSize.sm,
+    color: theme.textSecondary,
+    marginTop: 2,
+  },
+  reciterCheck: {
+    fontSize: 16,
+    fontWeight: typography.fontWeight.bold,
+    color: theme.accentGreen,
   },
   });

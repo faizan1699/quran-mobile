@@ -45,7 +45,7 @@ export function AppSwitch({
 
   const trackColor = progress.interpolate({
     inputRange: [0, 1],
-    outputRange: [theme.bgMuted, colors.primary[500]],
+    outputRange: [theme.bgMuted, theme.accentGreen],
   });
 
   const thumbTranslate = progress.interpolate({

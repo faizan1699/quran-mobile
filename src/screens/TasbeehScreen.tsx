@@ -5,10 +5,10 @@ import {
   Text,
   ScrollView,
   TouchableOpacity,
-  SafeAreaView,
   Vibration,
   Alert,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, NavigationProp } from '@react-navigation/native';
 import { useTranslation } from '@/i18n';
 import { useTheme, Theme } from '@/theme';
@@ -70,7 +70,7 @@ export default function TasbeehScreen(): React.JSX.Element {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView edges={['top']} style={styles.safeArea}>
       <GlobalHeader />
 
       <View style={[styles.subHeader, isRTL && styles.rowRTL]}>
@@ -283,8 +283,8 @@ const createStyles = (theme: Theme) =>
       borderColor: theme.border,
     },
     chipActive: {
-      backgroundColor: colors.primary[800],
-      borderColor: colors.primary[800],
+      backgroundColor: theme.accentGreen,
+      borderColor: theme.accentGreen,
     },
     chipText: {
       fontFamily: typography.fontFamily.arabic,
@@ -368,7 +368,7 @@ const createStyles = (theme: Theme) =>
       width: 220,
       height: 220,
       borderRadius: 110,
-      backgroundColor: colors.primary[800],
+      backgroundColor: theme.accentGreen,
       borderWidth: 4,
       borderColor: colors.gold[500],
       justifyContent: 'center',
@@ -427,7 +427,7 @@ const createStyles = (theme: Theme) =>
       paddingVertical: spacing[3],
     },
     controlButtonActive: {
-      borderColor: colors.primary[600],
+      borderColor: theme.accentGreen,
     },
     controlIcon: {
       fontSize: 18,

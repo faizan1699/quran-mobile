@@ -66,12 +66,10 @@ export function DailyAyahCard(): React.JSX.Element {
         {currentAyah.arabic}
       </Text>
 
-      {/* Translation block */}
       <Text style={styles.translation}>
         {translationText}
       </Text>
 
-      {/* Footer Row */}
       <View style={styles.footer}>
         {/* Reference tag */}
         <Text style={styles.reference}>
@@ -168,11 +166,11 @@ const createStyles = (theme: Theme) =>
       width: 6,
       height: 6,
       borderRadius: 3,
-      backgroundColor: 'rgba(201, 168, 76, 0.4)', // inactive gold
+      backgroundColor: 'rgba(201, 168, 76, 0.4)',
     },
     activeDot: {
-      width: 14, // expanded active pill
-      backgroundColor: theme.isDark ? colors.gold[500] : colors.primary[800],
+      width: 14,
+      backgroundColor: theme.isDark ? colors.gold[500] : theme.accentGreen,
     },
   });
 

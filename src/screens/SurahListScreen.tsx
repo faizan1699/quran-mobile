@@ -5,10 +5,10 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  SafeAreaView,
   ScrollView,
   ActivityIndicator,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { useTranslation } from '@/i18n';
 import { useTheme, Theme } from '@/theme';
@@ -16,14 +16,14 @@ import { GlobalHeader } from '@/components/GlobalHeader';
 import { useSurahs } from '@/hooks/useQuran';
 import { getSurahMeta } from '@/data/surahMeta';
 import { colors, spacing, typography, borderRadius, shadows } from '@/tokens';
-import { Chapter } from '@shared-types';
+import { QuranSurahSummary } from '@shared-types';
 
 export default function SurahListScreen(): React.JSX.Element {
   const { t, language, isRTL } = useTranslation();
   const { theme } = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const navigation = useNavigation<any>();
-  const { book, surahs, isLoading, isError, refetch } = useSurahs();
+  const { surahs, isLoading, isError, refetch } = useSurahs();
 
   const [query, setQuery] = useState('');
 
@@ -31,28 +31,28 @@ export default function SurahListScreen(): React.JSX.Element {
     const q = query.trim().toLowerCase();
     if (!q) return surahs;
     return surahs.filter((s) => {
-      const meta = getSurahMeta(s.sequenceOrder);
+      const meta = getSurahMeta(s.surah);
       return (
-        s.chapterName.toLowerCase().includes(q) ||
-        (s.chapterNameUrdu ?? '').includes(query) ||
-        String(s.sequenceOrder) === q ||
+        (meta?.englishName.toLowerCase().includes(q) ?? false) ||
+        (meta?.meaningUrdu ?? '').includes(query) ||
+        String(s.surah) === q ||
         (meta?.meaning.toLowerCase().includes(q) ?? false)
       );
     });
   }, [surahs, query]);
 
-  const openSurah = (surah: Chapter) => {
-    if (!book) return;
+  const surahName = (surah: number) =>
+    getSurahMeta(surah)?.englishName ?? `Surah ${surah}`;
+
+  const openSurah = (surah: QuranSurahSummary) => {
     navigation.navigate('QuranReader', {
-      bookId: book.id,
-      chapterId: surah.id,
-      surahNumber: surah.sequenceOrder,
-      surahName: surah.chapterName,
+      surahNumber: surah.surah,
+      surahName: surahName(surah.surah),
     });
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView edges={['top']} style={styles.safeArea}>
       <GlobalHeader />
 
       <View style={styles.container}>
@@ -71,7 +71,7 @@ export default function SurahListScreen(): React.JSX.Element {
 
         {isLoading ? (
           <View style={styles.centerBox}>
-            <ActivityIndicator size="large" color={colors.primary[800]} />
+            <ActivityIndicator size="large" color={theme.accentGreen} />
           </View>
         ) : isError ? (
           <View style={styles.centerBox}>
@@ -95,7 +95,7 @@ export default function SurahListScreen(): React.JSX.Element {
             showsVerticalScrollIndicator={false}
           >
             {filtered.map((surah) => {
-              const meta = getSurahMeta(surah.sequenceOrder);
+              const meta = getSurahMeta(surah.surah);
               const revelation = meta
                 ? language === 'ur'
                   ? meta.revelation === 'Makki'
@@ -104,20 +104,18 @@ export default function SurahListScreen(): React.JSX.Element {
                   : meta.revelation
                 : '';
               const subtitle =
-                language === 'ur'
-                  ? meta?.meaningUrdu ?? surah.chapterNameUrdu ?? ''
-                  : meta?.meaning ?? '';
+                language === 'ur' ? meta?.meaningUrdu ?? '' : meta?.meaning ?? '';
 
               return (
                 <TouchableOpacity
-                  key={surah.id}
+                  key={surah.surah}
                   style={[styles.row, isRTL && styles.rowRTL]}
                   onPress={() => openSurah(surah)}
                   activeOpacity={0.8}
                 >
                   {/* Number badge */}
                   <View style={styles.numberBadge}>
-                    <Text style={styles.numberText}>{surah.sequenceOrder}</Text>
+                    <Text style={styles.numberText}>{surah.surah}</Text>
                   </View>
 
                   {/* Name + meaning */}
@@ -126,25 +124,21 @@ export default function SurahListScreen(): React.JSX.Element {
                       style={[styles.surahName, isRTL && styles.textRTL]}
                       numberOfLines={1}
                     >
-                      {surah.chapterName}
+                      {surahName(surah.surah)}
                     </Text>
                     <Text
                       style={[styles.surahSub, isRTL && styles.textRTL]}
                       numberOfLines={1}
                     >
                       {revelation}
-                      {revelation && meta ? '  •  ' : ''}
-                      {meta
-                        ? `${meta.ayahCount} ${language === 'ur' ? 'آیات' : 'Ayahs'}`
-                        : ''}
+                      {revelation ? '  •  ' : ''}
+                      {`${surah.ayahCount} ${language === 'ur' ? 'آیات' : 'Ayahs'}`}
                       {subtitle ? `  •  ${subtitle}` : ''}
                     </Text>
                   </View>
 
                   {/* Arabic name */}
-                  <Text style={styles.arabicName}>
-                    {meta?.arabicName ?? surah.chapterNameUrdu ?? ''}
-                  </Text>
+                  <Text style={styles.arabicName}>{meta?.arabicName ?? ''}</Text>
                 </TouchableOpacity>
               );
             })}
@@ -226,7 +220,7 @@ const createStyles = (theme: Theme) =>
     height: 40,
     borderRadius: borderRadius.button,
     borderWidth: 1.5,
-    borderColor: colors.primary[600],
+    borderColor: theme.accentGreen,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -269,7 +263,7 @@ const createStyles = (theme: Theme) =>
     textAlign: 'center',
   },
   retryBtn: {
-    backgroundColor: colors.primary[800],
+    backgroundColor: theme.accentGreen,
     borderRadius: borderRadius.button,
     paddingHorizontal: spacing[5],
     paddingVertical: spacing[2],

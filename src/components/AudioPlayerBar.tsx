@@ -1,5 +1,12 @@
-import React from 'react';
-import { StyleSheet, View, Text, TouchableOpacity } from 'react-native';
+import React, { useRef, useState } from 'react';
+import {
+  StyleSheet,
+  View,
+  Text,
+  TouchableOpacity,
+  LayoutChangeEvent,
+  PanResponder,
+} from 'react-native';
 import { useAudioStore, State } from '@/store/useAudioStore';
 import { colors, spacing, typography } from '@/tokens';
 
@@ -19,6 +26,8 @@ export function AudioPlayerBar(): React.JSX.Element | null {
     playbackState,
     position,
     duration,
+    queue,
+    durations,
     togglePlay,
     skipToNext,
     skipToPrevious,
@@ -27,47 +36,105 @@ export function AudioPlayerBar(): React.JSX.Element | null {
     toggleShuffle,
     toggleRepeat,
     seekTo,
+    seekGlobal,
   } = useAudioStore();
+
+  const [sliderWidth, setSliderWidth] = useState(0);
+  const [isScrubbing, setIsScrubbing] = useState(false);
+  const [scrubPercent, setScrubPercent] = useState(0);
+
+  const widthRef = useRef(1);
+  const startX = useRef(0);
+  const seekRef = useRef({ useGlobal: false, totalDuration: 0 });
+  const seekGlobalRef = useRef(seekGlobal);
+  const seekToRef = useRef(seekTo);
+  seekGlobalRef.current = seekGlobal;
+  seekToRef.current = seekTo;
+
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: () => true,
+      onPanResponderGrant: (evt) => {
+        setIsScrubbing(true);
+        startX.current = evt.nativeEvent.locationX;
+        const p = Math.max(0, Math.min(1, startX.current / widthRef.current));
+        setScrubPercent(p * 100);
+      },
+      onPanResponderMove: (_evt, gesture) => {
+        const p = Math.max(0, Math.min(1, (startX.current + gesture.dx) / widthRef.current));
+        setScrubPercent(p * 100);
+      },
+      onPanResponderRelease: (_evt, gesture) => {
+        const p = Math.max(0, Math.min(1, (startX.current + gesture.dx) / widthRef.current));
+        const { useGlobal: ug, totalDuration: td } = seekRef.current;
+        const target = p * td;
+        if (ug) seekGlobalRef.current(target);
+        else seekToRef.current(target);
+        setIsScrubbing(false);
+      },
+      onPanResponderTerminate: () => setIsScrubbing(false),
+    })
+  ).current;
 
   // Do not render anything if no track is active
   if (!currentTrack) return null;
 
   const isPlaying = playbackState === State.Playing;
 
-  // Calculate percentage for custom gold progress slider bar
-  const percentComplete = duration > 0
-    ? (position / duration) * 100
-    : 0;
+  const currentIndex = queue.findIndex((t) => t.id === currentTrack.id);
+  const allDurationsKnown =
+    queue.length > 0 && queue.every((t) => (durations[t.id] || 0) > 0);
+  const useGlobal = allDurationsKnown && currentIndex >= 0;
 
-  // Manual scrubbing trigger
-  const handleScrub = (percent: number) => {
-    const targetSeconds = (percent / 100) * duration;
-    seekTo(targetSeconds);
+  const elapsedBefore = useGlobal
+    ? queue.slice(0, currentIndex).reduce((sum, t) => sum + (durations[t.id] || 0), 0)
+    : 0;
+  const totalDuration = useGlobal
+    ? queue.reduce((sum, t) => sum + (durations[t.id] || 0), 0)
+    : duration;
+  const displayPosition = useGlobal ? elapsedBefore + position : position;
+
+  const percentComplete =
+    totalDuration > 0 ? Math.min(100, (displayPosition / totalDuration) * 100) : 0;
+
+  widthRef.current = sliderWidth || 1;
+  seekRef.current = { useGlobal, totalDuration };
+
+  const onSliderLayout = (e: LayoutChangeEvent) => {
+    setSliderWidth(e.nativeEvent.layout.width);
   };
+
+  const fillPercent = isScrubbing ? scrubPercent : percentComplete;
+  const shownPosition = isScrubbing
+    ? (scrubPercent / 100) * totalDuration
+    : displayPosition;
 
   return (
     <View style={styles.container}>
       {/* Progress Bar Row */}
       <View style={styles.progressRow}>
         <Text style={styles.timeLabel}>
-          {formatDuration(position)}
+          {formatDuration(shownPosition)}
         </Text>
-        <TouchableOpacity
-          style={styles.sliderTrack}
-          activeOpacity={0.9}
-          onPress={(e) => {
-            // Simple click-to-seek approximation
-            const layoutWidth = 180; // approximate slider width
-            const clickX = e.nativeEvent.locationX;
-            const percentage = Math.max(0, Math.min(100, (clickX / layoutWidth) * 100));
-            handleScrub(percentage);
-          }}
+        <View
+          style={styles.sliderHitbox}
+          onLayout={onSliderLayout}
+          {...panResponder.panHandlers}
         >
-          <View style={[styles.sliderFill, { width: `${percentComplete}%` }]} />
-          <View style={[styles.sliderThumb, { left: `${percentComplete}%` }]} />
-        </TouchableOpacity>
+          <View style={styles.sliderTrack}>
+            <View style={[styles.sliderFill, { width: `${fillPercent}%` }]} />
+            <View
+              style={[
+                styles.sliderThumb,
+                { left: `${fillPercent}%` },
+                isScrubbing && styles.sliderThumbActive,
+              ]}
+            />
+          </View>
+        </View>
         <Text style={styles.timeLabel}>
-          {formatDuration(duration)}
+          {formatDuration(totalDuration)}
         </Text>
       </View>
 
@@ -109,7 +176,12 @@ export function AudioPlayerBar(): React.JSX.Element | null {
       <Text style={styles.metaText} numberOfLines={1}>
         {currentTrack.hadithNumber
           ? `Hadith #${currentTrack.hadithNumber}: ${currentTrack.title}`
+          : currentTrack.artist
+          ? `${currentTrack.title}  ·  ${currentTrack.artist}`
           : currentTrack.title}
+        {queue.length > 1 && currentIndex >= 0
+          ? `  ·  ${currentIndex + 1}/${queue.length}`
+          : ''}
       </Text>
     </View>
   );
@@ -142,8 +214,13 @@ const styles = StyleSheet.create({
     width: 35,
     textAlign: 'center',
   },
-  sliderTrack: {
+  sliderHitbox: {
     flex: 1,
+    paddingVertical: 12,
+    justifyContent: 'center',
+  },
+  sliderTrack: {
+    width: '100%',
     height: 4,
     backgroundColor: colors.primary[600],
     borderRadius: 2,
@@ -162,6 +239,13 @@ const styles = StyleSheet.create({
     backgroundColor: colors.gold[600],
     top: -3,
     marginLeft: -5,
+  },
+  sliderThumbActive: {
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    top: -6,
+    marginLeft: -8,
   },
   controlsRow: {
     flexDirection: 'row',

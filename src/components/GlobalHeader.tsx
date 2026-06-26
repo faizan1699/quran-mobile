@@ -111,7 +111,7 @@ const createStyles = (theme: Theme) =>
       alignItems: 'center',
     },
     langSegmentActive: {
-      backgroundColor: colors.primary[800],
+      backgroundColor: theme.accentGreen,
     },
     langText: {
       fontFamily: typography.fontFamily.english,
@@ -131,7 +131,7 @@ const createStyles = (theme: Theme) =>
       width: 24,
       height: 24,
       borderRadius: 12,
-      backgroundColor: colors.primary[800],
+      backgroundColor: theme.accentGreen,
       justifyContent: 'center',
       alignItems: 'center',
       borderWidth: 1,
@@ -162,7 +162,7 @@ const createStyles = (theme: Theme) =>
       width: 22,
       height: 22,
       borderRadius: 11,
-      backgroundColor: colors.primary[800],
+      backgroundColor: theme.accentGreen,
       justifyContent: 'center',
       alignItems: 'center',
     },
