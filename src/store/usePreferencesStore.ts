@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { DEFAULT_RECITER_ID } from '@/data/reciters';
 
 /**
  * App-wide text size preference. Maps to a multiplier applied to every
@@ -33,6 +34,7 @@ interface PreferencesState {
   // Reading & audio
   autoPlayNextAyah: boolean;
   keepScreenOn: boolean;
+  reciterId: string;
   // Downloads
   downloadOverWifiOnly: boolean;
   /** Surah/book ids the user has "downloaded" for offline use (mock). */
@@ -51,6 +53,7 @@ interface PreferencesState {
     value: boolean
   ) => void;
   setFontScale: (scale: FontScale) => void;
+  setReciterId: (id: string) => void;
   toggleDownloaded: (id: string) => void;
   isDownloaded: (id: string) => boolean;
 }
@@ -63,6 +66,7 @@ export const usePreferencesStore = create<PreferencesState>()(
       jummahReminder: true,
       autoPlayNextAyah: true,
       keepScreenOn: false,
+      reciterId: DEFAULT_RECITER_ID,
       downloadOverWifiOnly: true,
       downloadedIds: [],
       fontScale: 'default',
@@ -70,6 +74,8 @@ export const usePreferencesStore = create<PreferencesState>()(
       setPref: (key, value) => set({ [key]: value } as Partial<PreferencesState>),
 
       setFontScale: (fontScale) => set({ fontScale }),
+
+      setReciterId: (reciterId) => set({ reciterId }),
 
       toggleDownloaded: (id) =>
         set((state) => ({

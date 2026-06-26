@@ -123,6 +123,8 @@
   "quran": {
     "searchSurah": "Search surah…",
     "playSurah": "Play",
+    "reciter": "Reciter",
+    "chooseReciter": "Choose Reciter",
     "translation": "Translation",
     "tafseer": "Tafseer",
     "showTafseer": "Show Tafseer",
