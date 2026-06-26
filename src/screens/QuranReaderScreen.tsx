@@ -103,8 +103,9 @@ export default function QuranReaderScreen(): React.JSX.Element {
 
   const playAyah = async (ayah: Content) => {
     markRead(ayah);
-    await playTrack(buildTrack(ayah));
-    await setQueue(tracks);
+    const track = buildTrack(ayah);
+    await playTrack(track);
+    await setQueue([track]);
   };
 
   const playSurah = async () => {
