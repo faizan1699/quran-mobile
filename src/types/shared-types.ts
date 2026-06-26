@@ -93,6 +93,19 @@ export interface Chapter {
   sequenceOrder: number;
 }
 
+export interface TimedWord {
+  text: string;
+  start: number;
+  end: number;
+}
+
+export interface ReciterTiming {
+  audioUrl: string;
+  words: TimedWord[];
+}
+
+export type WordTimings = Record<string, ReciterTiming>;
+
 export interface Content {
   id: string;
   chapterId: string;
@@ -101,6 +114,7 @@ export interface Content {
   urduText?: string | null;
   tafseerText?: string | null;
   audioUrl?: string | null;
+  wordTimings?: WordTimings | null;
   sequenceNumber: number;
   hadithNumber?: number | null;
   narrator?: string | null;

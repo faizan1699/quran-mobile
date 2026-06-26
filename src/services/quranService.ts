@@ -1,5 +1,5 @@
 import { apiClient } from './apiClient';
-import { cached } from './offlineCache';
+import { cached, cachedRevalidate } from './offlineCache';
 import { Book, BookCategory, Chapter, Content } from '@shared-types';
 import {
   mockQuranBook,
@@ -32,14 +32,14 @@ export const quranService = {
 
   async getSurahs(bookId: string): Promise<Chapter[]> {
     if (USE_MOCK) return settle(mockSurahs);
-    return cached(`quran:surahs:${bookId}`, () =>
+    return cachedRevalidate(`quran:surahs:${bookId}`, () =>
       unwrap<Chapter[]>(apiClient.get(`/books/${bookId}/chapters`))
     );
   },
 
   async getSurahAyahs(bookId: string, chapterId: string): Promise<Content[]> {
     if (USE_MOCK) return settle(mockAyahsForChapter(chapterId));
-    return cached(`quran:ayahs:${bookId}:${chapterId}`, async () => {
+    return cachedRevalidate(`quran:ayahs:${bookId}:${chapterId}`, async () => {
       const limit = 100;
       const all: Content[] = [];
       for (let page = 1; page <= 50; page++) {

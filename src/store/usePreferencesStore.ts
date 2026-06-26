@@ -34,6 +34,8 @@ interface PreferencesState {
   // Reading & audio
   autoPlayNextAyah: boolean;
   keepScreenOn: boolean;
+  playTranslation: boolean;
+  highlightWords: boolean;
   reciterId: string;
   // Downloads
   downloadOverWifiOnly: boolean;
@@ -49,6 +51,8 @@ interface PreferencesState {
       | 'jummahReminder'
       | 'autoPlayNextAyah'
       | 'keepScreenOn'
+      | 'playTranslation'
+      | 'highlightWords'
       | 'downloadOverWifiOnly',
     value: boolean
   ) => void;
@@ -66,6 +70,8 @@ export const usePreferencesStore = create<PreferencesState>()(
       jummahReminder: true,
       autoPlayNextAyah: true,
       keepScreenOn: false,
+      playTranslation: false,
+      highlightWords: false,
       reciterId: DEFAULT_RECITER_ID,
       downloadOverWifiOnly: true,
       downloadedIds: [],

@@ -17,9 +17,16 @@ import { useQuranStore } from '@/store/useQuranStore';
 import { usePreferencesStore } from '@/store/usePreferencesStore';
 import { GlobalHeader } from '@/components/GlobalHeader';
 import { AudioPlayerBar } from '@/components/AudioPlayerBar';
+import { AyahArabic } from '@/components/AyahArabic';
 import { useSurahAyahs } from '@/hooks/useQuran';
 import { getSurahMeta } from '@/data/surahMeta';
-import { RECITERS, getReciter, ayahAudioUrl } from '@/data/reciters';
+import {
+  RECITERS,
+  getReciter,
+  ayahAudioUrl,
+  translationAudioUrl,
+  URDU_TRANSLATION,
+} from '@/data/reciters';
 import { useTheme, Theme } from '@/theme';
 import { colors, spacing, typography, borderRadius, shadows } from '@/tokens';
 import { RootStackParamList } from '@/navigation/types';
@@ -55,6 +62,11 @@ export default function QuranReaderScreen(): React.JSX.Element {
   const setReciterId = usePreferencesStore((s) => s.setReciterId);
   const reciter = getReciter(reciterId);
 
+  const playTranslation = usePreferencesStore((s) => s.playTranslation);
+  const highlightWords = usePreferencesStore((s) => s.highlightWords);
+  const setPref = usePreferencesStore((s) => s.setPref);
+  const reciterKey = String(reciter.quranComId);
+
   const [openTafseer, setOpenTafseer] = useState<Record<string, boolean>>({});
   const [fontModifier, setFontModifier] = useState(0); // 0 -> 4 -> 8 -> 12
   const [reciterModalOpen, setReciterModalOpen] = useState(false);
@@ -62,18 +74,38 @@ export default function QuranReaderScreen(): React.JSX.Element {
   const toggleTafseer = (id: string) =>
     setOpenTafseer((prev) => ({ ...prev, [id]: !prev[id] }));
 
-  const buildTrack = (a: Content) => ({
-    id: a.id,
-    url: ayahAudioUrl(reciter, surahNumber, a.sequenceNumber),
-    title: `${surahName} ${surahNumber}:${a.sequenceNumber}`,
-    artist: reciter.name,
+  const timingFor = (a: Content) =>
+    highlightWords ? a.wordTimings?.[reciterKey] ?? null : null;
+
+  const buildTrack = (a: Content) => {
+    const timing = timingFor(a);
+    return {
+      id: a.id,
+      url: timing?.audioUrl || ayahAudioUrl(reciter, surahNumber, a.sequenceNumber),
+      title: `${surahName} ${surahNumber}:${a.sequenceNumber}`,
+      artist: reciter.name,
+      chapterId,
+      bookId,
+    };
+  };
+
+  const buildTranslationTrack = (a: Content) => ({
+    id: `${a.id}::ur`,
+    url: translationAudioUrl(surahNumber, a.sequenceNumber),
+    title: `${surahName} ${surahNumber}:${a.sequenceNumber} — ${
+      language === 'ur' ? 'ترجمہ' : 'Translation'
+    }`,
+    artist: URDU_TRANSLATION.name,
     chapterId,
     bookId,
   });
 
   const tracks = useMemo(
-    () => (ayahs ?? []).map(buildTrack),
-    [ayahs, surahName, surahNumber, chapterId, bookId, reciter]
+    () =>
+      (ayahs ?? []).flatMap((a: Content) =>
+        playTranslation ? [buildTrack(a), buildTranslationTrack(a)] : [buildTrack(a)]
+      ),
+    [ayahs, surahName, surahNumber, chapterId, bookId, reciter, playTranslation, highlightWords, language]
   );
 
   // Remember the surah as the last-read position when it opens.
@@ -151,6 +183,26 @@ export default function QuranReaderScreen(): React.JSX.Element {
           <TouchableOpacity style={styles.fontBtn} onPress={cycleFont} activeOpacity={0.8}>
             <Text style={styles.fontIcon}>🅰</Text>
             <Text style={styles.fontText}>+{fontModifier}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.fontBtn, playTranslation && styles.toggleActive]}
+            onPress={() => setPref('playTranslation', !playTranslation)}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.fontIcon}>🌐</Text>
+            <Text style={[styles.fontText, playTranslation && styles.toggleActiveText]}>
+              {language === 'ur' ? 'ترجمہ' : 'Tr'}
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.fontBtn, highlightWords && styles.toggleActive]}
+            onPress={() => setPref('highlightWords', !highlightWords)}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.fontIcon}>✨</Text>
+            <Text style={[styles.fontText, highlightWords && styles.toggleActiveText]}>
+              {language === 'ur' ? 'لفظ' : 'Hl'}
+            </Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.playSurahBtn} onPress={playSurah} activeOpacity={0.8}>
             <Text style={styles.playSurahText}>▶ {t('quran.playSurah')}</Text>
@@ -251,14 +303,16 @@ export default function QuranReaderScreen(): React.JSX.Element {
                 </View>
 
                 {/* Arabic */}
-                <Text
-                  style={[
+                <AyahArabic
+                  trackId={ayah.id}
+                  words={highlightWords ? ayah.wordTimings?.[reciterKey]?.words : undefined}
+                  plainText={ayah.verseText}
+                  textStyle={[
                     styles.arabic,
                     { fontSize: sizeArabic, lineHeight: sizeArabic * typography.lineHeight.arabic },
                   ]}
-                >
-                  {ayah.verseText}
-                </Text>
+                  activeStyle={styles.arabicActive}
+                />
 
                 {/* Translation (always shown with the Arabic) */}
                 {!!translation && (
@@ -445,6 +499,13 @@ const createStyles = (theme: Theme) =>
     fontWeight: typography.fontWeight.bold,
     color: theme.textSecondary,
   },
+  toggleActive: {
+    backgroundColor: theme.accentGreen,
+    borderColor: theme.accentGreen,
+  },
+  toggleActiveText: {
+    color: colors.neutral[0],
+  },
   playSurahBtn: {
     backgroundColor: theme.accentGreen,
     borderRadius: borderRadius.button,
@@ -593,6 +654,9 @@ const createStyles = (theme: Theme) =>
     textAlign: 'right',
     writingDirection: 'rtl',
     marginVertical: spacing[2],
+  },
+  arabicActive: {
+    color: colors.gold[400],
   },
   divider: {
     height: 1,

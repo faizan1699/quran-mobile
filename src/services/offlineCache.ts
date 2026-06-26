@@ -119,3 +119,35 @@ export async function cached<T>(
   }
   return fresh;
 }
+
+async function revalidate<T>(
+  key: string,
+  current: T,
+  fetcher: () => Promise<T>
+): Promise<void> {
+  try {
+    const fresh = await fetcher();
+    if (!isEmpty(fresh) && JSON.stringify(fresh) !== JSON.stringify(current)) {
+      await writeCache(key, fresh);
+    }
+  } catch {
+    return;
+  }
+}
+
+export async function cachedRevalidate<T>(
+  key: string,
+  fetcher: () => Promise<T>
+): Promise<T> {
+  const hit = await readCache<T>(key);
+  if (hit !== null) {
+    void revalidate(key, hit, fetcher);
+    return hit;
+  }
+
+  const fresh = await fetcher();
+  if (!isEmpty(fresh)) {
+    await writeCache(key, fresh);
+  }
+  return fresh;
+}

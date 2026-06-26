@@ -146,7 +146,6 @@ export default function LibraryScreen(): React.JSX.Element {
           <FlashList
             data={shelves}
             keyExtractor={(item) => item.category}
-            estimatedItemSize={240}
             showsVerticalScrollIndicator={false}
             renderItem={({ item }) => (
               <View style={styles.shelfContainer}>
@@ -160,7 +159,6 @@ export default function LibraryScreen(): React.JSX.Element {
                   <FlashList
                     data={item.books}
                     horizontal
-                    estimatedItemSize={120}
                     showsHorizontalScrollIndicator={false}
                     keyExtractor={(book) => book.id}
                     renderItem={({ item: book }) => (

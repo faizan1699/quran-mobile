@@ -1,5 +1,12 @@
-import React, { useState } from 'react';
-import { StyleSheet, View, Text, TouchableOpacity, LayoutChangeEvent } from 'react-native';
+import React, { useRef, useState } from 'react';
+import {
+  StyleSheet,
+  View,
+  Text,
+  TouchableOpacity,
+  LayoutChangeEvent,
+  PanResponder,
+} from 'react-native';
 import { useAudioStore, State } from '@/store/useAudioStore';
 import { colors, spacing, typography } from '@/tokens';
 
@@ -33,6 +40,42 @@ export function AudioPlayerBar(): React.JSX.Element | null {
   } = useAudioStore();
 
   const [sliderWidth, setSliderWidth] = useState(0);
+  const [isScrubbing, setIsScrubbing] = useState(false);
+  const [scrubPercent, setScrubPercent] = useState(0);
+
+  const widthRef = useRef(1);
+  const startX = useRef(0);
+  const seekRef = useRef({ useGlobal: false, totalDuration: 0 });
+  const seekGlobalRef = useRef(seekGlobal);
+  const seekToRef = useRef(seekTo);
+  seekGlobalRef.current = seekGlobal;
+  seekToRef.current = seekTo;
+
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: () => true,
+      onPanResponderGrant: (evt) => {
+        setIsScrubbing(true);
+        startX.current = evt.nativeEvent.locationX;
+        const p = Math.max(0, Math.min(1, startX.current / widthRef.current));
+        setScrubPercent(p * 100);
+      },
+      onPanResponderMove: (_evt, gesture) => {
+        const p = Math.max(0, Math.min(1, (startX.current + gesture.dx) / widthRef.current));
+        setScrubPercent(p * 100);
+      },
+      onPanResponderRelease: (_evt, gesture) => {
+        const p = Math.max(0, Math.min(1, (startX.current + gesture.dx) / widthRef.current));
+        const { useGlobal: ug, totalDuration: td } = seekRef.current;
+        const target = p * td;
+        if (ug) seekGlobalRef.current(target);
+        else seekToRef.current(target);
+        setIsScrubbing(false);
+      },
+      onPanResponderTerminate: () => setIsScrubbing(false),
+    })
+  ).current;
 
   // Do not render anything if no track is active
   if (!currentTrack) return null;
@@ -55,37 +98,41 @@ export function AudioPlayerBar(): React.JSX.Element | null {
   const percentComplete =
     totalDuration > 0 ? Math.min(100, (displayPosition / totalDuration) * 100) : 0;
 
+  widthRef.current = sliderWidth || 1;
+  seekRef.current = { useGlobal, totalDuration };
+
   const onSliderLayout = (e: LayoutChangeEvent) => {
     setSliderWidth(e.nativeEvent.layout.width);
   };
 
-  const handleScrub = (clickX: number) => {
-    const width = sliderWidth || 1;
-    const percent = Math.max(0, Math.min(1, clickX / width));
-    const targetSeconds = percent * totalDuration;
-    if (useGlobal) {
-      seekGlobal(targetSeconds);
-    } else {
-      seekTo(targetSeconds);
-    }
-  };
+  const fillPercent = isScrubbing ? scrubPercent : percentComplete;
+  const shownPosition = isScrubbing
+    ? (scrubPercent / 100) * totalDuration
+    : displayPosition;
 
   return (
     <View style={styles.container}>
       {/* Progress Bar Row */}
       <View style={styles.progressRow}>
         <Text style={styles.timeLabel}>
-          {formatDuration(displayPosition)}
+          {formatDuration(shownPosition)}
         </Text>
-        <TouchableOpacity
-          style={styles.sliderTrack}
-          activeOpacity={0.9}
+        <View
+          style={styles.sliderHitbox}
           onLayout={onSliderLayout}
-          onPress={(e) => handleScrub(e.nativeEvent.locationX)}
+          {...panResponder.panHandlers}
         >
-          <View style={[styles.sliderFill, { width: `${percentComplete}%` }]} />
-          <View style={[styles.sliderThumb, { left: `${percentComplete}%` }]} />
-        </TouchableOpacity>
+          <View style={styles.sliderTrack}>
+            <View style={[styles.sliderFill, { width: `${fillPercent}%` }]} />
+            <View
+              style={[
+                styles.sliderThumb,
+                { left: `${fillPercent}%` },
+                isScrubbing && styles.sliderThumbActive,
+              ]}
+            />
+          </View>
+        </View>
         <Text style={styles.timeLabel}>
           {formatDuration(totalDuration)}
         </Text>
@@ -167,8 +214,13 @@ const styles = StyleSheet.create({
     width: 35,
     textAlign: 'center',
   },
-  sliderTrack: {
+  sliderHitbox: {
     flex: 1,
+    paddingVertical: 12,
+    justifyContent: 'center',
+  },
+  sliderTrack: {
+    width: '100%',
     height: 4,
     backgroundColor: colors.primary[600],
     borderRadius: 2,
@@ -187,6 +239,13 @@ const styles = StyleSheet.create({
     backgroundColor: colors.gold[600],
     top: -3,
     marginLeft: -5,
+  },
+  sliderThumbActive: {
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    top: -6,
+    marginLeft: -8,
   },
   controlsRow: {
     flexDirection: 'row',

@@ -1,6 +1,11 @@
 import { create } from 'zustand';
 import { Platform } from 'react-native';
-import { Audio, AVPlaybackStatus } from 'expo-av';
+import {
+  createAudioPlayer,
+  setAudioModeAsync,
+  AudioPlayer,
+  AudioStatus,
+} from 'expo-audio';
 
 export enum PlaybackState {
   None = 'none',
@@ -9,11 +14,10 @@ export enum PlaybackState {
   Buffering = 'buffering',
 }
 
-// Emulate TrackPlayer.State for UI compatibility
 export const State = PlaybackState;
 
 interface AudioTrackInfo {
-  id: string; // matches contentId
+  id: string;
   url: string;
   title: string;
   artist: string;
@@ -44,11 +48,14 @@ interface AudioState {
   seekGlobal: (seconds: number) => Promise<void>;
 }
 
-let soundInstance: Audio.Sound | null = null;
-let positionTimer: ReturnType<typeof setInterval> | null = null;
+type StatusSub = { remove: () => void };
 
-async function fetchDurationSeconds(url: string): Promise<number> {
-  if (Platform.OS !== 'web') return 0;
+let player: AudioPlayer | null = null;
+let statusSub: StatusSub | null = null;
+let pendingSeekSeconds = 0;
+let audioModeReady = false;
+
+function fetchWebDurationSeconds(url: string): Promise<number> {
   return new Promise((resolve) => {
     try {
       const a: any = new (globalThis as any).Audio();
@@ -66,12 +73,67 @@ async function fetchDurationSeconds(url: string): Promise<number> {
   });
 }
 
+function fetchNativeDurationSeconds(url: string): Promise<number> {
+  return new Promise((resolve) => {
+    let settled = false;
+    let probe: AudioPlayer | null = null;
+    let sub: StatusSub | null = null;
+
+    const finish = (value: number) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timeout);
+      if (sub) sub.remove();
+      if (probe) {
+        try {
+          probe.remove();
+        } catch {}
+      }
+      resolve(Number.isFinite(value) && value > 0 ? value : 0);
+    };
+
+    const timeout = setTimeout(() => finish(0), 20000);
+
+    try {
+      probe = createAudioPlayer({ uri: url }, { updateInterval: 1000 });
+      sub = probe.addListener('playbackStatusUpdate', (status: AudioStatus) => {
+        if (status.isLoaded && status.duration > 0) {
+          finish(status.duration);
+        }
+      });
+    } catch {
+      finish(0);
+    }
+  });
+}
+
+async function fetchDurationSeconds(url: string): Promise<number> {
+  return Platform.OS === 'web'
+    ? fetchWebDurationSeconds(url)
+    : fetchNativeDurationSeconds(url);
+}
+
+async function ensureAudioMode(): Promise<void> {
+  if (audioModeReady) return;
+  audioModeReady = true;
+  try {
+    await setAudioModeAsync({
+      allowsRecording: false,
+      shouldPlayInBackground: true,
+      playsInSilentMode: true,
+      shouldRouteThroughEarpiece: false,
+      interruptionMode: 'duckOthers',
+    });
+  } catch {
+    audioModeReady = false;
+  }
+}
+
 export const useAudioStore = create<AudioState>((set, get) => {
 
   const prefetchDurations = async (tracks: AudioTrackInfo[]) => {
-    if (Platform.OS !== 'web') return;
     const todo = tracks.filter((t) => !(get().durations[t.id] > 0));
-    const CONCURRENCY = 6;
+    const CONCURRENCY = Platform.OS === 'web' ? 6 : 4;
     for (let i = 0; i < todo.length; i += CONCURRENCY) {
       const batch = todo.slice(i, i + CONCURRENCY);
       const results = await Promise.all(
@@ -89,31 +151,23 @@ export const useAudioStore = create<AudioState>((set, get) => {
     }
   };
 
-  const stopTicker = () => {
-    if (positionTimer) {
-      clearInterval(positionTimer);
-      positionTimer = null;
+  const teardownPlayer = () => {
+    if (statusSub) {
+      statusSub.remove();
+      statusSub = null;
+    }
+    if (player) {
+      try {
+        player.remove();
+      } catch {}
+      player = null;
     }
   };
 
-  const startTicker = () => {
-    if (positionTimer) return;
-    positionTimer = setInterval(async () => {
-      if (!soundInstance || get().playbackState !== PlaybackState.Playing) return;
-      try {
-        const status = await soundInstance.getStatusAsync();
-        if (status.isLoaded) {
-          set({ position: status.positionMillis / 1000 });
-        }
-      } catch {
-        return;
-      }
-    }, 1000);
-  };
-
   const handleTrackFinished = async () => {
-    if (get().isRepeatEnabled && soundInstance) {
-      await soundInstance.replayAsync();
+    if (get().isRepeatEnabled && player) {
+      await player.seekTo(0);
+      player.play();
       return;
     }
     const { queue, currentTrack } = get();
@@ -121,27 +175,29 @@ export const useAudioStore = create<AudioState>((set, get) => {
     if (idx >= 0 && idx < queue.length - 1) {
       await get().skipToNext();
     } else {
-      stopTicker();
       set({ playbackState: PlaybackState.Paused });
     }
   };
 
-  const onPlaybackStatusUpdate = async (status: AVPlaybackStatus) => {
+  const onPlaybackStatusUpdate = (status: AudioStatus) => {
     if (!status.isLoaded) {
-      if (status.error) {
-        console.error(`Playback error: ${status.error}`);
-      }
       return;
     }
 
-    const durationSeconds = (status.durationMillis || 0) / 1000;
+    if (pendingSeekSeconds > 0 && player) {
+      const seconds = pendingSeekSeconds;
+      pendingSeekSeconds = 0;
+      void player.seekTo(seconds);
+    }
+
+    const durationSeconds = status.duration || 0;
 
     set({
-      position: status.positionMillis / 1000,
+      position: status.currentTime,
       duration: durationSeconds,
       playbackState: status.isBuffering
         ? PlaybackState.Buffering
-        : status.isPlaying
+        : status.playing
         ? PlaybackState.Playing
         : PlaybackState.Paused,
     });
@@ -151,9 +207,17 @@ export const useAudioStore = create<AudioState>((set, get) => {
       set({ durations: { ...get().durations, [current.id]: durationSeconds } });
     }
 
-    if (status.didJustFinish && Platform.OS !== 'web') {
-      await handleTrackFinished();
+    if (status.didJustFinish) {
+      void handleTrackFinished();
     }
+  };
+
+  const startPlayback = (track: AudioTrackInfo, startSeconds: number) => {
+    teardownPlayer();
+    pendingSeekSeconds = startSeconds > 0 ? startSeconds : 0;
+    player = createAudioPlayer({ uri: track.url }, { updateInterval: 100 });
+    statusSub = player.addListener('playbackStatusUpdate', onPlaybackStatusUpdate);
+    player.play();
   };
 
   return {
@@ -175,53 +239,27 @@ export const useAudioStore = create<AudioState>((set, get) => {
           playbackState: PlaybackState.Buffering,
         });
 
-        await Audio.setAudioModeAsync({
-          allowsRecordingIOS: false,
-          staysActiveInBackground: true,
-          playsInSilentModeIOS: true,
-          playThroughEarpieceAndroid: false,
-        });
-
-        if (!soundInstance) {
-          soundInstance = new Audio.Sound();
-          soundInstance.setOnPlaybackStatusUpdate(onPlaybackStatusUpdate);
-        } else {
-          await soundInstance.unloadAsync();
-        }
-
-        await soundInstance.loadAsync(
-          { uri: track.url },
-          { shouldPlay: true, positionMillis: Math.round(startSeconds * 1000) }
-        );
+        await ensureAudioMode();
+        startPlayback(track, startSeconds);
         set({ playbackState: PlaybackState.Playing });
-        startTicker();
-
-        if (Platform.OS === 'web') {
-          const el: any = (soundInstance as any)._key;
-          if (el && typeof el.addEventListener === 'function') {
-            el.addEventListener('ended', () => handleTrackFinished());
-          }
-        }
       } catch (error) {
-        console.error('Error playing track via expo-av:', error);
+        console.error('Error playing track via expo-audio:', error);
       }
     },
 
     togglePlay: async () => {
       try {
         const { currentTrack, playbackState } = get();
-        if (!soundInstance) {
+        if (!player) {
           if (currentTrack) await get().playTrack(currentTrack);
           return;
         }
         if (playbackState === PlaybackState.Playing) {
-          await soundInstance.pauseAsync();
+          player.pause();
           set({ playbackState: PlaybackState.Paused });
-          stopTicker();
         } else {
-          await soundInstance.playAsync();
+          player.play();
           set({ playbackState: PlaybackState.Playing });
-          startTicker();
         }
       } catch (error) {
         console.error('Error toggling playback:', error);
@@ -276,12 +314,9 @@ export const useAudioStore = create<AudioState>((set, get) => {
 
     resetPlayer: async () => {
       try {
-        stopTicker();
+        teardownPlayer();
+        pendingSeekSeconds = 0;
         set({ currentTrack: null, queue: [], position: 0, duration: 0, playbackState: PlaybackState.None });
-        if (soundInstance) {
-          await soundInstance.unloadAsync();
-          soundInstance = null;
-        }
       } catch (error) {
         console.error('Error resetting player:', error);
       }
@@ -290,8 +325,8 @@ export const useAudioStore = create<AudioState>((set, get) => {
     seekTo: async (seconds) => {
       try {
         set({ position: seconds });
-        if (soundInstance) {
-          await soundInstance.setPositionAsync(seconds * 1000);
+        if (player) {
+          await player.seekTo(seconds);
         }
       } catch (error) {
         console.error('Error seeking track:', error);
