@@ -79,9 +79,24 @@ export const URDU_TRANSLATION: TranslationReciter = {
   folder: 'translations/Urdu_Shamshad_Ali_Khan_46kbps',
 };
 
+export const ENGLISH_TRANSLATION: TranslationReciter = {
+  id: 'english_ibrahim_walk',
+  name: 'English Translation (Saheeh International)',
+  nameUrdu: 'انگریزی ترجمہ (صحیح انٹرنیشنل)',
+  folder: 'English/Sahih_Intnl_Ibrahim_Walk_192kbps',
+};
+
+export function translationReciterFor(
+  language: 'en' | 'ur'
+): TranslationReciter {
+  return language === 'ur' ? URDU_TRANSLATION : ENGLISH_TRANSLATION;
+}
+
 export function translationAudioUrl(
   surahNumber: number,
-  ayahNumber: number
+  ayahNumber: number,
+  language: 'en' | 'ur' = 'ur'
 ): string {
-  return `https://everyayah.com/data/${URDU_TRANSLATION.folder}/${pad3(surahNumber)}${pad3(ayahNumber)}.mp3`;
+  const reciter = translationReciterFor(language);
+  return `https://everyayah.com/data/${reciter.folder}/${pad3(surahNumber)}${pad3(ayahNumber)}.mp3`;
 }

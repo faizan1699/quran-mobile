@@ -25,7 +25,7 @@ import {
   getReciter,
   ayahAudioUrl,
   translationAudioUrl,
-  URDU_TRANSLATION,
+  translationReciterFor,
 } from '@/data/reciters';
 import { useTheme, Theme } from '@/theme';
 import { colors, spacing, typography, borderRadius, shadows } from '@/tokens';
@@ -88,12 +88,12 @@ export default function QuranReaderScreen(): React.JSX.Element {
   });
 
   const buildTranslationTrack = (a: QuranAyah) => ({
-    id: `${a.id}::ur`,
-    url: translationAudioUrl(surahNumber, a.ayah),
+    id: `${a.id}::${language}`,
+    url: translationAudioUrl(surahNumber, a.ayah, language),
     title: `${surahName} ${surahNumber}:${a.ayah} — ${
       language === 'ur' ? 'ترجمہ' : 'Translation'
     }`,
-    artist: URDU_TRANSLATION.name,
+    artist: translationReciterFor(language).name,
   });
 
   const tracks = useMemo(
@@ -329,21 +329,19 @@ export default function QuranReaderScreen(): React.JSX.Element {
                 </TouchableOpacity>
 
                 {openTafseer[ayah.id] && (() => {
-                  const section = sectionForAyah(ayah.ayah);
+                  const section = language === 'ur' ? sectionForAyah(ayah.ayah) : null;
                   const sectionText = section?.text;
                   return (
                     <View style={styles.tafseerBox}>
                       {section && (
                         <Text style={styles.tafseerSourceLabel}>
-                          {language === 'ur'
-                            ? `تعلیم القرآن • آیات ${section.ayahRange}`
-                            : `Taleem-ul-Quran • Ayahs ${section.ayahRange}`}
+                          {`تعلیم القرآن • آیات ${section.ayahRange}`}
                         </Text>
                       )}
                       <Text
                         style={[
                           styles.tafseerText,
-                          (sectionText || language === 'ur') && styles.tafseerUrdu,
+                          language === 'ur' && styles.tafseerUrdu,
                         ]}
                       >
                         {sectionText || t('quran.tafseerSoon')}
