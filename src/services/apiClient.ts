@@ -11,10 +11,9 @@ const getDevHost = (): string | null => {
 };
 
 const getBaseUrl = (): string => {
-  const isDev = process.env.EXPO_PUBLIC_APP_ENV === 'development';
   const fromEnv = process.env.EXPO_PUBLIC_API_URL?.trim();
 
-  if (!isDev && fromEnv && fromEnv.length > 0) {
+  if (fromEnv && fromEnv.length > 0 && !fromEnv.includes('example.com')) {
     return fromEnv.replace(/\/+$/, '');
   }
 
