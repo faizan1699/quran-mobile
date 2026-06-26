@@ -1,4 +1,6 @@
-import { BookCategory } from '@shared-types';
+import { apiClient } from './apiClient';
+import { cached, readCache, writeCache } from './offlineCache';
+import { Book, BookCategory, Chapter, Content, Duaa } from '@shared-types';
 
 export interface OfflineBook {
   id: string;
@@ -20,7 +22,7 @@ export interface OfflineChapter {
 export interface OfflineContent {
   id: string;
   chapterId: string;
-  verseText: string; // Arabic text
+  verseText: string;
   translationText: string | null;
   urduText: string | null;
   audioUrl: string | null;
@@ -41,211 +43,155 @@ export interface OfflineDuaa {
   audioUrl?: string | null;
 }
 
-const MOCK_BOOKS: OfflineBook[] = [
-  {
-    id: 'b1',
-    title: 'Sahih al-Bukhari',
-    titleUrdu: 'صحیح البخاری',
-    author: 'Imam al-Bukhari',
-    category: BookCategory.HADITH,
-    coverImage: 'https://images.unsplash.com/photo-1544947950-fa07a98d237f?auto=format&fit=crop&q=80&w=300',
-  },
-  {
-    id: 'b2',
-    title: 'Tafsir ibn Kathir',
-    titleUrdu: 'تفسیر ابن کثیر',
-    author: 'Ibn Kathir',
-    category: BookCategory.TAFSIR,
-    coverImage: 'https://images.unsplash.com/photo-1589829085413-56de8ae18c73?auto=format&fit=crop&q=80&w=300',
-  },
-  {
-    id: 'b3',
-    title: 'Riyad as-Salihin',
-    titleUrdu: 'ریاض الصالحین',
-    author: 'Imam an-Nawawi',
-    category: BookCategory.HADITH,
-    coverImage: 'https://images.unsplash.com/photo-1608659597669-b45511779f93?auto=format&fit=crop&q=80&w=300',
-  }
-];
+const DUAA_CACHE_KEY = 'offline:duaa:all';
+const BOOKS_CACHE_KEY = 'offline:books:all';
+const PAGE_LIMIT = 100;
 
-const MOCK_CHAPTERS: OfflineChapter[] = [
-  // Sahih Bukhari
-  {
-    id: 'ch1',
-    bookId: 'b1',
-    chapterName: 'Book of Revelation',
-    chapterNameUrdu: 'وحی کا بیان',
-    sequenceOrder: 1,
-  },
-  {
-    id: 'ch2',
-    bookId: 'b1',
-    chapterName: 'Book of Belief',
-    chapterNameUrdu: 'ایمان کا بیان',
-    sequenceOrder: 2,
-  },
-  // Tafsir Ibn Kathir
-  {
-    id: 'ch3',
-    bookId: 'b2',
-    chapterName: 'Virtues of Quran',
-    chapterNameUrdu: 'قرآن کے فضائل',
-    sequenceOrder: 1,
-  }
-];
+async function unwrap<T>(promise: Promise<unknown>): Promise<T> {
+  return (await promise) as unknown as T;
+}
 
-const MOCK_CONTENTS: OfflineContent[] = [
-  {
-    id: 'c1',
-    chapterId: 'ch1',
-    verseText: 'إِنَّمَا الأَعْمَالُ بِالنِّيَّاتِ، وَإِنَّمَا لِكُلِّ امْرِئٍ مَا نَوَى.',
-    translationText: 'The reward of deeds depends upon the intentions and every person will get the reward according to what he has intended.',
-    urduText: 'اعمال کا دارومدار نیتوں پر ہے اور ہر شخص کو وہی ملے گا جس کی اس نے نیت کی۔',
-    audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3',
-    sequenceNumber: 1,
-    hadithNumber: 1,
-    narrator: 'Narrated by Umar bin Al-Khattab',
-  },
-  {
-    id: 'c2',
-    chapterId: 'ch1',
-    verseText: 'أَنَّ عَائِشَةَ أُمَّ الْمُؤْمِنِينَ رَضِيَ اللَّهُ عَنْهَا أَنَّ الْحَارِثَ بْنَ هِشَامٍ رَضِيَ اللَّهُ عَنْهُ سَأَلَ رَسُولَ اللَّهِ صَلَّى اللَّهُ عَلَيْهِ وَسَلَّمَ فَقَالَ: يَا رَسُولَ اللَّهِ كَيْفَ يَأْتِيكَ الْوَحْيُ؟',
-    translationText: 'Al-Harith bin Hisham asked Allah\'s Messenger: "O Allah\'s Messenger! How is the Divine Inspiration revealed to you?"',
-    urduText: 'حارث بن ہشام نے رسول اللہ صلی اللہ علیہ وسلم سے سوال کیا کہ یا رسول اللہ! آپ پر وحی کس طرح نازل ہوتی ہے؟',
-    audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3',
-    sequenceNumber: 2,
-    hadithNumber: 2,
-    narrator: 'Narrated by Aisha',
-  },
-  {
-    id: 'c3',
-    chapterId: 'ch2',
-    verseText: 'بُنِيَ الإِسْلاَمُ عَلَى خَمْسٍ: شَهَادَةِ أَنْ لاَ إِلَهَ إِلاَّ اللَّهُ وَأَنَّ مُحَمَّدًا رَسُولُ اللَّهِ، وَإِقَامِ الصَّلاَةِ، وَإِيتَاءِ الزَّكَاةِ، وَالْحَجِّ، وَصَوْمِ رَمَضَانَ.',
-    translationText: 'Islam is based on five principles: To testify that none has the right to be worshipped but Allah and Muhammad is Allah\'s Messenger, to offer prayers, to pay Zakat, to perform Hajj, and to fast during Ramadan.',
-    urduText: 'اسلام کی بنیاد پانچ چیزوں پر ہے: اس بات کی گواہی دینا کہ اللہ کے سوا کوئی معبود نہیں اور محمد اللہ کے رسول ہیں، نماز قائم کرنا، زکوٰۃ دینا، حج کرنا اور رمضان کے روزے رکھنا۔',
-    audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3',
-    sequenceNumber: 1,
-    hadithNumber: 8,
-    narrator: 'Narrated by Ibn Umar',
+async function fetchAllPages<T>(path: string): Promise<T[]> {
+  const all: T[] = [];
+  for (let page = 1; page <= 100; page++) {
+    const batch = await unwrap<T[]>(
+      apiClient.get(path, { params: { page, limit: PAGE_LIMIT } })
+    );
+    all.push(...batch);
+    if (batch.length < PAGE_LIMIT) break;
   }
-];
+  return all;
+}
 
-const MOCK_DUAAS: OfflineDuaa[] = [
-  {
-    id: 'd1',
-    title: 'Dua for Guidance',
-    titleUrdu: 'ہدایت کی دعا',
-    arabicText: 'اللَّهُمَّ إِنِّي أَسْأَلُكَ الْهُدَى وَالتُّقَى وَالْعَفَافَ وَالْغِنَى',
-    translation: 'O Allah, I ask You for guidance, piety, chastity, and self-sufficiency.',
-    urduText: 'اے اللہ! میں تجھ سے ہدایت، تقویٰ، پاکدامنی اور غنا (بے نیازی) کا سوال کرتا ہوں۔',
-    category: 'Daily',
-    isFavorite: true,
-    audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3',
-  },
-  {
-    id: 'd2',
-    title: 'Dua before Sleeping',
-    titleUrdu: 'سونے سے پہلے کی دعا',
-    arabicText: 'بِاسْمِكَ اللَّهُمَّ أَمُوتُ وَأَحْيَا',
-    translation: 'In Your name, O Allah, I die and I live.',
-    urduText: 'اے اللہ! تیرے ہی نام کے ساتھ میں مرتا ہوں اور جیتا ہوں۔',
-    category: 'Night',
-    isFavorite: false,
-  },
-  {
-    id: 'd3',
-    title: 'Dua for Knowledge',
-    titleUrdu: 'علم میں اضافے کی دعا',
-    arabicText: 'رَّبِّ زِدْنِي عِلْمًا',
-    translation: 'My Lord, increase me in knowledge.',
-    urduText: 'اے میرے رب! میرے علم میں اضافہ فرما۔',
-    category: 'Education',
-    isFavorite: true,
-  }
-];
+function toOfflineBook(book: Book): OfflineBook {
+  return {
+    id: book.id,
+    title: book.title,
+    titleUrdu: book.titleUrdu ?? null,
+    author: book.author,
+    category: book.category,
+    coverImage: book.coverImage ?? null,
+  };
+}
 
-// ============================================================================
-// SERVICE IMPLEMENTATION
-// ============================================================================
+function toOfflineChapter(chapter: Chapter): OfflineChapter {
+  return {
+    id: chapter.id,
+    bookId: chapter.bookId,
+    chapterName: chapter.chapterName,
+    chapterNameUrdu: chapter.chapterNameUrdu ?? null,
+    sequenceOrder: chapter.sequenceOrder,
+  };
+}
+
+function toOfflineContent(content: Content): OfflineContent {
+  return {
+    id: content.id,
+    chapterId: content.chapterId,
+    verseText: content.verseText,
+    translationText: content.translationText ?? null,
+    urduText: content.urduText ?? null,
+    audioUrl: content.audioUrl ?? null,
+    sequenceNumber: content.sequenceNumber,
+    hadithNumber: content.hadithNumber ?? null,
+    narrator: content.narrator ?? null,
+  };
+}
+
+function toOfflineDuaa(duaa: Duaa): OfflineDuaa {
+  return {
+    id: duaa.id,
+    title: duaa.title,
+    titleUrdu: duaa.titleUrdu ?? null,
+    arabicText: duaa.arabicText,
+    translation: duaa.translation,
+    urduText: duaa.urduText ?? null,
+    category: duaa.category,
+    isFavorite: duaa.isFavorite,
+    audioUrl: duaa.audioUrl ?? null,
+  };
+}
 
 class OfflineStorageService {
-  private useMocks: boolean = true; // Set to true by default for emulator safety
-
-  setUseMocks(use: boolean) {
-    this.useMocks = use;
-  }
-
   async getBooks(): Promise<OfflineBook[]> {
-    if (this.useMocks) {
-      return MOCK_BOOKS;
-    }
-    // WatermelonDB code will extend here
-    return MOCK_BOOKS;
+    return cached(BOOKS_CACHE_KEY, async () => {
+      const books = await fetchAllPages<Book>('/books');
+      return books.map(toOfflineBook);
+    });
   }
 
   async getBookById(id: string): Promise<OfflineBook | null> {
-    if (this.useMocks) {
-      return MOCK_BOOKS.find((b) => b.id === id) || null;
-    }
-    return MOCK_BOOKS.find((b) => b.id === id) || null;
+    const books = await this.getBooks();
+    return books.find((b) => b.id === id) ?? null;
   }
 
   async getChapters(bookId: string): Promise<OfflineChapter[]> {
-    if (this.useMocks) {
-      return MOCK_CHAPTERS.filter((ch) => ch.bookId === bookId);
-    }
-    return MOCK_CHAPTERS.filter((ch) => ch.bookId === bookId);
+    return cached(`offline:chapters:${bookId}`, async () => {
+      const chapters = await unwrap<Chapter[]>(
+        apiClient.get(`/books/${bookId}/chapters`)
+      );
+      return chapters.map(toOfflineChapter);
+    });
   }
 
-  async getChapterContents(chapterId: string): Promise<OfflineContent[]> {
-    if (this.useMocks) {
-      return MOCK_CONTENTS.filter((c) => c.chapterId === chapterId);
-    }
-    return MOCK_CONTENTS.filter((c) => c.chapterId === chapterId);
+  async getChapterContents(
+    bookId: string,
+    chapterId: string
+  ): Promise<OfflineContent[]> {
+    return cached(`offline:contents:${bookId}:${chapterId}`, async () => {
+      const contents = await fetchAllPages<Content>(
+        `/books/${bookId}/chapters/${chapterId}/contents`
+      );
+      return contents.map(toOfflineContent);
+    });
   }
 
   async getDuaas(): Promise<OfflineDuaa[]> {
-    if (this.useMocks) {
-      return MOCK_DUAAS;
-    }
-    return MOCK_DUAAS;
+    return cached(DUAA_CACHE_KEY, async () => {
+      const duaas = await fetchAllPages<Duaa>('/duaa');
+      return duaas.map(toOfflineDuaa);
+    });
   }
 
   async toggleDuaaFavorite(id: string): Promise<OfflineDuaa | null> {
-    const duaa = MOCK_DUAAS.find((d) => d.id === id);
-    if (duaa) {
-      duaa.isFavorite = !duaa.isFavorite;
-      return { ...duaa };
+    const list = await this.getDuaas();
+    let updated: OfflineDuaa | null = null;
+    const next = list.map((d) => {
+      if (d.id !== id) {
+        return d;
+      }
+      updated = { ...d, isFavorite: !d.isFavorite };
+      return updated;
+    });
+    if (!updated) {
+      return null;
     }
-    return null;
+    await writeCache(DUAA_CACHE_KEY, next);
+    return updated;
   }
 
   async searchOffline(query: string): Promise<{
     books: OfflineBook[];
-    contents: OfflineContent[];
     duaas: OfflineDuaa[];
   }> {
     const q = query.toLowerCase().trim();
     if (!q) {
-      return { books: [], contents: [], duaas: [] };
+      return { books: [], duaas: [] };
     }
 
-    const filteredBooks = MOCK_BOOKS.filter(
+    const [books, duaas] = await Promise.all([
+      readCache<OfflineBook[]>(BOOKS_CACHE_KEY),
+      readCache<OfflineDuaa[]>(DUAA_CACHE_KEY),
+    ]);
+
+    const filteredBooks = (books ?? []).filter(
       (b) =>
         b.title.toLowerCase().includes(q) ||
         (b.titleUrdu && b.titleUrdu.includes(q)) ||
         b.author.toLowerCase().includes(q)
     );
 
-    const filteredContents = MOCK_CONTENTS.filter(
-      (c) =>
-        c.verseText.includes(q) ||
-        (c.translationText && c.translationText.toLowerCase().includes(q)) ||
-        (c.urduText && c.urduText.includes(q)) ||
-        (c.narrator && c.narrator.toLowerCase().includes(q))
-    );
-
-    const filteredDuaas = MOCK_DUAAS.filter(
+    const filteredDuaas = (duaas ?? []).filter(
       (d) =>
         d.title.toLowerCase().includes(q) ||
         (d.titleUrdu && d.titleUrdu.includes(q)) ||
@@ -254,11 +200,7 @@ class OfflineStorageService {
         (d.urduText && d.urduText.includes(q))
     );
 
-    return {
-      books: filteredBooks,
-      contents: filteredContents,
-      duaas: filteredDuaas,
-    };
+    return { books: filteredBooks, duaas: filteredDuaas };
   }
 }
 

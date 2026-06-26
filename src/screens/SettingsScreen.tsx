@@ -18,6 +18,7 @@ import { RootStackParamList } from '@/navigation/types';
 import { useUserStore, FiqhMethod, LocationData } from '@/store/useUserStore';
 import { usePreferencesStore, FontScale } from '@/store/usePreferencesStore';
 import { useDeviceLocation } from '@/hooks/useDeviceLocation';
+import { clearCache } from '@/services/offlineCache';
 import { GlobalHeader } from '@/components/GlobalHeader';
 import { AppSwitch } from '@/components/AppSwitch';
 import { colors, borderRadius, spacing, typography, shadows } from '@/tokens';
@@ -109,8 +110,9 @@ export default function SettingsScreen(): React.JSX.Element {
         {
           text: t('settings.clearCache'),
           style: 'destructive',
-          onPress: () => {
+          onPress: async () => {
             queryClient.clear();
+            await clearCache();
             Alert.alert(t('settings.cacheCleared'), t('settings.cacheClearedDesc'));
           },
         },

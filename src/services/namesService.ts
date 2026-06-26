@@ -1,4 +1,5 @@
 import { apiClient } from './apiClient';
+import { cached } from './offlineCache';
 
 export interface DivineName {
   id: string;
@@ -15,12 +16,14 @@ async function unwrap<T>(promise: Promise<unknown>): Promise<T> {
 
 export const namesService = {
   async getNames(): Promise<DivineName[]> {
-    try {
-      const names = await unwrap<DivineName[]>(apiClient.get('/names'));
-      return Array.isArray(names) ? names : [];
-    } catch {
-      return [];
-    }
+    return cached('names:all', async () => {
+      try {
+        const names = await unwrap<DivineName[]>(apiClient.get('/names'));
+        return Array.isArray(names) ? names : [];
+      } catch {
+        return [];
+      }
+    });
   },
 
   async searchNames(query: string): Promise<DivineName[]> {
