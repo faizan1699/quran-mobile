@@ -102,8 +102,8 @@ export default function QuranLandingScreen(): React.JSX.Element {
       icon: '🟡',
       label: 'Allah Names',
       labelUrdu: 'اسمائے حسنیٰ',
-      onPress: comingSoon,
-      comingSoon: true,
+      onPress: () =>
+        navigation.navigate('IbadaatStack', { screen: 'AllahNames' }),
     },
   ];
 

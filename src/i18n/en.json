@@ -234,6 +234,7 @@
     "sampleLink": "Sample link",
     "customColor": "Custom color",
     "apply": "Apply",
+    "done": "Done",
     "invalidHex": "Enter a valid hex color, e.g. #1B4332",
     "storage": "Storage",
     "clearCache": "Clear cache",

@@ -93,6 +93,7 @@ export default function AppearanceScreen(): React.JSX.Element {
 
   const [pickerTarget, setPickerTarget] = useState<PickerTarget | null>(null);
   const [hexInput, setHexInput] = useState('');
+  const [originalColor, setOriginalColor] = useState<string | null>(null);
 
   const isWeb = Platform.OS === 'web';
   const followSystem = mode === 'system';
@@ -102,22 +103,47 @@ export default function AppearanceScreen(): React.JSX.Element {
     sameColor(c, backgroundColor)
   );
 
+  const applyTarget = (target: PickerTarget, color: string | null) => {
+    if (target === 'accent') {
+      setAccentColor(color);
+    } else {
+      setBackgroundColor(color);
+    }
+  };
+
   const openPicker = (target: PickerTarget) => {
     const current = target === 'accent' ? accentColor : backgroundColor;
+    setOriginalColor(current);
     setHexInput(current ?? '#');
     setPickerTarget(target);
   };
 
-  const applyCustom = () => {
-    const normalized = normalizeHex(hexInput);
-    if (!normalized || !pickerTarget) return;
-    if (pickerTarget === 'accent') {
-      setAccentColor(normalized);
-    } else {
-      setBackgroundColor(normalized);
+  const commitLive = (value: string) => {
+    if (!pickerTarget) return;
+    const normalized = normalizeHex(value);
+    if (normalized) {
+      applyTarget(pickerTarget, normalized);
+    }
+  };
+
+  const onHexChange = (text: string) => {
+    setHexInput(text);
+    commitLive(text);
+  };
+
+  const onWebColorChange = (value: string) => {
+    setHexInput(value.toUpperCase());
+    commitLive(value);
+  };
+
+  const cancelPicker = () => {
+    if (pickerTarget) {
+      applyTarget(pickerTarget, originalColor);
     }
     setPickerTarget(null);
   };
+
+  const closePicker = () => setPickerTarget(null);
 
   const hexValid = isValidHex(hexInput);
 
@@ -405,7 +431,7 @@ export default function AppearanceScreen(): React.JSX.Element {
         visible={pickerTarget !== null}
         transparent
         animationType="fade"
-        onRequestClose={() => setPickerTarget(null)}
+        onRequestClose={cancelPicker}
       >
         <View style={styles.modalOverlay}>
           <View style={styles.modalCard}>
@@ -415,24 +441,26 @@ export default function AppearanceScreen(): React.JSX.Element {
             <View style={styles.modalPreviewRow}>
               {isWeb
                 ? React.createElement('input' as never, {
-                    type: 'color',
-                    value: (hexValid
-                      ? normalizeHex(hexInput) ?? '#000000'
-                      : '#000000'
-                    ).toLowerCase(),
-                    onChange: (e: { target: { value: string } }) =>
-                      setHexInput((e.target.value || '').toUpperCase()),
-                    style: {
-                      width: 48,
-                      height: 48,
-                      padding: 0,
-                      borderWidth: 1,
-                      borderColor: theme.border,
-                      borderRadius: 10,
-                      background: 'none',
-                      cursor: 'pointer',
-                    },
-                  })
+                  type: 'color',
+                  value: (hexValid
+                    ? normalizeHex(hexInput) ?? '#000000'
+                    : '#000000'
+                  ).toLowerCase(),
+                  onInput: (e: { target: { value: string } }) =>
+                    onWebColorChange(e.target.value || ''),
+                  onChange: (e: { target: { value: string } }) =>
+                    onWebColorChange(e.target.value || ''),
+                  style: {
+                    width: 48,
+                    height: 48,
+                    padding: 0,
+                    borderWidth: 1,
+                    borderColor: theme.border,
+                    borderRadius: 10,
+                    background: 'none',
+                    cursor: 'pointer',
+                  },
+                })
                 : (
                   <View
                     style={[
@@ -448,7 +476,7 @@ export default function AppearanceScreen(): React.JSX.Element {
               <TextInput
                 style={styles.hexInput}
                 value={hexInput}
-                onChangeText={setHexInput}
+                onChangeText={onHexChange}
                 placeholder="#1B4332"
                 placeholderTextColor={theme.textMuted}
                 autoCapitalize="characters"
@@ -462,18 +490,17 @@ export default function AppearanceScreen(): React.JSX.Element {
             <View style={[styles.modalActions, isRTL && styles.rowRTL]}>
               <TouchableOpacity
                 style={styles.modalCancelBtn}
-                onPress={() => setPickerTarget(null)}
+                onPress={cancelPicker}
                 activeOpacity={0.8}
               >
                 <Text style={styles.modalCancelText}>{t('settings.cancel')}</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={[styles.modalApplyBtn, !hexValid && styles.modalApplyBtnDisabled]}
-                onPress={applyCustom}
-                disabled={!hexValid}
+                style={styles.modalApplyBtn}
+                onPress={closePicker}
                 activeOpacity={0.8}
               >
-                <Text style={styles.modalApplyText}>{t('settings.apply')}</Text>
+                <Text style={styles.modalApplyText}>{t('settings.done')}</Text>
               </TouchableOpacity>
             </View>
           </View>
