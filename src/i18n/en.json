@@ -18,6 +18,7 @@
     "empty": "No notes yet",
     "emptyDesc": "Tap + to write your first note. You can also add notes to any ayah from the Quran reader.",
     "noResults": "No notes found",
+    "general": "General notes",
     "colorNone": "No colour",
     "back": "Back",
     "saveErrorTitle": "Could not save",
@@ -136,15 +137,21 @@
     "loadError": "Could not load. Check your connection.",
     "retry": "Retry",
     "noSurahs": "No surahs found.",
-    "noAyahs": "No ayahs found in this surah."
+    "noAyahs": "No ayahs found in this surah.",
+    "myNotes": "My Notes",
+    "addNote": "Add note",
+    "notesSaved": "Saved on this device",
+    "tapToEdit": "Tap to edit"
   },
   "home": {
     "dailyAyah": "Daily Ayah",
     "ayahDay": "Ayah of the Day",
     "prayerTimes": "Prayer Times",
     "currentLocation": "Current Location",
+    "tapToSetLocation": "Tap to set your location",
     "calcSettings": "Calculation settings",
     "hadithOfDay": "Hadith of the Day",
+    "flashes": "Flashes",
     "quickLinks": "Quick Links",
     "share": "Share",
     "calculationMethod": "Calculation Method"
@@ -224,6 +231,8 @@
     "jummahReminderDesc": "Friday reminder to read Surah Al-Kahf",
     "readingDownloads": "Reading & Downloads",
     "autoPlayNextAyah": "Auto-play next ayah",
+    "autoOpenPlayer": "Open full player when audio starts",
+    "autoOpenPlayerDesc": "Show the full Now Playing screen automatically instead of just the mini bar",
     "downloadOverWifiOnly": "Download over Wi-Fi only",
     "darkMode": "Dark mode",
     "darkModeDesc": "Use the dark theme across the app",
@@ -263,6 +272,11 @@
     "clearCacheConfirm": "This clears temporarily cached data. Your settings, downloads and login stay intact. Continue?",
     "cacheCleared": "Cache cleared",
     "cacheClearedDesc": "Temporary cached data has been removed.",
-    "cancel": "Cancel"
+    "cancel": "Cancel",
+    "englishFont": "App font (English)",
+    "englishFontDesc": "Font used for the app interface and English text.",
+    "chooseFont": "Choose font",
+    "previewArabicLabel": "Arabic",
+    "previewUrduLabel": "Urdu"
   }
 }

@@ -15,6 +15,7 @@ import { useTranslation } from '@/i18n';
 import { useTheme, Theme } from '@/theme';
 import { GlobalHeader } from '@/components/GlobalHeader';
 import { PlayingWaves } from '@/components/PlayingWaves';
+import { SurahListSkeleton } from '@/components/Skeleton';
 import { useSurahs } from '@/hooks/useQuran';
 import { quranService } from '@/services/quranService';
 import { useAudioStore, State } from '@/store/useAudioStore';
@@ -176,9 +177,7 @@ export default function SurahListScreen(): React.JSX.Element {
         </View>
 
         {isLoading ? (
-          <View style={styles.centerBox}>
-            <ActivityIndicator size="large" color={theme.accentGreen} />
-          </View>
+          <SurahListSkeleton />
         ) : isError ? (
           <View style={styles.centerBox}>
             <Text style={styles.errorText}>{t('quran.loadError')}</Text>

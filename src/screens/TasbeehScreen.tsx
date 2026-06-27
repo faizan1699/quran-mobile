@@ -13,6 +13,7 @@ import { useNavigation, NavigationProp } from '@react-navigation/native';
 import { useTranslation } from '@/i18n';
 import { useTheme, Theme } from '@/theme';
 import { GlobalHeader } from '@/components/GlobalHeader';
+import { BackButton } from '@/components/BackButton';
 import { useTasbeehStore } from '@/store/useTasbeehStore';
 import { adhkar } from '@/data/adhkar';
 import { colors, borderRadius, spacing, typography, shadows } from '@/tokens';
@@ -74,15 +75,7 @@ export default function TasbeehScreen(): React.JSX.Element {
       <GlobalHeader />
 
       <View style={[styles.subHeader, isRTL && styles.rowRTL]}>
-        <TouchableOpacity
-          style={[styles.iconButton, isRTL && styles.rowRTL]}
-          onPress={() => navigation.goBack()}
-          activeOpacity={0.7}
-          accessibilityLabel={language === 'ur' ? 'واپس' : 'Back'}
-        >
-          <Text style={styles.iconButtonText}>{isRTL ? '▶' : '◀'}</Text>
-          <Text style={styles.backText}>{language === 'ur' ? 'واپس' : 'Back'}</Text>
-        </TouchableOpacity>
+        <BackButton />
 
         <Text style={styles.title}>{t('tasbeeh.title')}</Text>
 
@@ -228,23 +221,6 @@ const createStyles = (theme: Theme) =>
     },
     rowRTL: {
       flexDirection: 'row-reverse',
-    },
-    iconButton: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 4,
-      minWidth: 64,
-    },
-    iconButtonText: {
-      fontSize: 14,
-      color: theme.textBrandGreen,
-      fontWeight: 'bold',
-    },
-    backText: {
-      fontFamily: typography.fontFamily.english,
-      fontSize: typography.fontSize.sm,
-      color: theme.textBrandGreen,
-      fontWeight: typography.fontWeight.semibold,
     },
     title: {
       fontFamily: typography.fontFamily.english,

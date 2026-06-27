@@ -18,6 +18,7 @@ import {
   usePlaybackTimeline,
   PLAYBACK_RATES,
 } from '@/store/useAudioStore';
+import { usePreferencesStore } from '@/store/usePreferencesStore';
 import { AyahArabic } from '@/components/AyahArabic';
 import { Icon } from '@/components/Icon';
 import { useTheme, Theme } from '@/theme';
@@ -52,6 +53,9 @@ export default function PlayerScreen(): React.JSX.Element | null {
   const resetPlayer = useAudioStore((s) => s.resetPlayer);
   const playbackRate = useAudioStore((s) => s.playbackRate);
   const setPlaybackRate = useAudioStore((s) => s.setPlaybackRate);
+
+  const autoPlayNextSurah = usePreferencesStore((s) => s.autoPlayNextSurah);
+  const setPref = usePreferencesStore((s) => s.setPref);
 
   const timeline = usePlaybackTimeline();
 
@@ -137,9 +141,10 @@ export default function PlayerScreen(): React.JSX.Element | null {
           onPress={minimize}
           activeOpacity={0.7}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          accessibilityRole="button"
+          accessibilityLabel={isUrdu ? 'چھوٹا کریں' : 'Minimize'}
         >
-          <Text style={styles.headerChevron}>⌄</Text>
-          <Text style={styles.headerBtnText}>{isUrdu ? 'چھوٹا کریں' : 'Minimize'}</Text>
+          <Icon name="chevron-down" size={24} color={theme.textPrimary} />
         </TouchableOpacity>
 
         <Text style={styles.headerTitle}>{isUrdu ? 'ابھی چل رہا ہے' : 'Now Playing'}</Text>
@@ -149,8 +154,10 @@ export default function PlayerScreen(): React.JSX.Element | null {
           onPress={close}
           activeOpacity={0.7}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          accessibilityRole="button"
+          accessibilityLabel={isUrdu ? 'بند کریں' : 'Close'}
         >
-          <Text style={styles.headerClose}>✕</Text>
+          <Icon name="close" size={22} color={theme.textPrimary} />
         </TouchableOpacity>
       </View>
 
@@ -235,19 +242,40 @@ export default function PlayerScreen(): React.JSX.Element | null {
           </Text>
         )}
 
-        <View style={styles.speedRow}>
-          <Text style={styles.speedLabel}>{isUrdu ? 'رفتار' : 'Speed'}</Text>
-          <TouchableOpacity
-            style={[styles.speedPill, playbackRate !== 1 && styles.speedPillActive]}
-            onPress={cycleRate}
-            activeOpacity={0.8}
-          >
-            <Text
-              style={[styles.speedText, playbackRate !== 1 && styles.speedTextActive]}
-            >
-              {playbackRate}×
+        <View style={styles.optionsRow}>
+          <View style={styles.optionGroup}>
+            <Text style={styles.speedLabel} numberOfLines={1}>
+              {isUrdu ? 'رفتار' : 'Speed'}
             </Text>
-          </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.speedPill, playbackRate !== 1 && styles.speedPillActive]}
+              onPress={cycleRate}
+              activeOpacity={0.8}
+            >
+              <Text
+                style={[styles.speedText, playbackRate !== 1 && styles.speedTextActive]}
+              >
+                {playbackRate}×
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.optionGroup}>
+            <Text style={styles.speedLabel} numberOfLines={1}>
+              {isUrdu ? 'اگلی سورت خودکار' : 'Auto-next'}
+            </Text>
+            <TouchableOpacity
+              style={[styles.speedPill, autoPlayNextSurah && styles.speedPillActive]}
+              onPress={() => setPref('autoPlayNextSurah', !autoPlayNextSurah)}
+              activeOpacity={0.8}
+            >
+              <Text
+                style={[styles.speedText, autoPlayNextSurah && styles.speedTextActive]}
+              >
+                {autoPlayNextSurah ? (isUrdu ? 'آن' : 'On') : (isUrdu ? 'آف' : 'Off')}
+              </Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
         <View style={styles.controlsRow}>
@@ -313,21 +341,14 @@ const createStyles = (theme: Theme) =>
       borderBottomColor: theme.borderDivider,
     },
     headerBtn: {
-      flexDirection: 'row',
+      width: 40,
+      height: 40,
+      borderRadius: borderRadius.xl,
       alignItems: 'center',
-      gap: 4,
-      minWidth: 90,
-    },
-    headerChevron: {
-      fontSize: 20,
-      color: theme.textBrandGreen,
-      lineHeight: 20,
-    },
-    headerBtnText: {
-      fontFamily: typography.fontFamily.english,
-      fontSize: typography.fontSize.sm,
-      fontWeight: typography.fontWeight.bold,
-      color: theme.textBrandGreen,
+      justifyContent: 'center',
+      backgroundColor: theme.bgMuted,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: theme.border,
     },
     headerTitle: {
       fontFamily: typography.fontFamily.english,
@@ -335,12 +356,6 @@ const createStyles = (theme: Theme) =>
       fontWeight: typography.fontWeight.bold,
       color: theme.textSecondary,
       letterSpacing: 0.5,
-    },
-    headerClose: {
-      fontSize: 20,
-      color: theme.textSecondary,
-      textAlign: 'right',
-      minWidth: 90,
     },
     body: {
       flex: 1,
@@ -479,17 +494,24 @@ const createStyles = (theme: Theme) =>
       textAlign: 'center',
       marginTop: 2,
     },
-    speedRow: {
+    optionsRow: {
       flexDirection: 'row',
       alignItems: 'center',
-      justifyContent: 'center',
-      gap: spacing[2],
+      justifyContent: 'space-between',
+      gap: spacing[3],
       marginTop: spacing[3],
+    },
+    optionGroup: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing[2],
+      flexShrink: 1,
     },
     speedLabel: {
       fontFamily: typography.fontFamily.english,
       fontSize: typography.fontSize.xs,
       color: theme.textMuted,
+      flexShrink: 1,
     },
     speedPill: {
       minWidth: 56,

@@ -1,5 +1,5 @@
 import { apiClient } from './apiClient';
-import { cached, cachedRevalidate } from './offlineCache';
+import { cached } from './offlineCache';
 import { QuranAyah, QuranSurahSummary, QuranTafseerSection } from '@shared-types';
 
 async function unwrap<T>(promise: Promise<unknown>): Promise<T> {
@@ -14,13 +14,13 @@ export const quranService = {
   },
 
   async getSurahAyahs(surah: number): Promise<QuranAyah[]> {
-    return cachedRevalidate(`quran:ayahs:${surah}`, () =>
+    return cached(`quran:ayahs:${surah}`, () =>
       unwrap<QuranAyah[]>(apiClient.get(`/quran/surah/${surah}`))
     );
   },
 
   async getTafseerSections(surah: number): Promise<QuranTafseerSection[]> {
-    return cachedRevalidate(`quran:tafseer:${surah}`, () =>
+    return cached(`quran:tafseer:${surah}`, () =>
       unwrap<QuranTafseerSection[]>(apiClient.get(`/quran/tafseer/${surah}`))
     );
   },

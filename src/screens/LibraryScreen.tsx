@@ -7,6 +7,7 @@ import { useTranslation } from '@/i18n';
 import { useTheme, Theme } from '@/theme';
 import { GlobalHeader } from '@/components/GlobalHeader';
 import { BookCoverCard } from '@/components/BookCoverCard';
+import { LibrarySkeleton } from '@/components/Skeleton';
 import { offlineStorageService, OfflineBook } from '@/services/offlineStorageService';
 import { colors, borderRadius, spacing, typography } from '@/tokens';
 import { RootStackParamList } from '@/navigation/types';
@@ -27,12 +28,17 @@ export default function LibraryScreen(): React.JSX.Element {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeSegment, setActiveSegment] = useState<'all' | 'downloads'>('all');
   const [books, setBooks] = useState<OfflineBook[]>([]);
+  const [loading, setLoading] = useState(true);
 
   // Load books from offline storage database
   useEffect(() => {
     const fetchBooks = async () => {
-      const data = await offlineStorageService.getBooks();
-      setBooks(data);
+      try {
+        const data = await offlineStorageService.getBooks();
+        setBooks(data);
+      } finally {
+        setLoading(false);
+      }
     };
     fetchBooks();
   }, []);
@@ -144,6 +150,9 @@ export default function LibraryScreen(): React.JSX.Element {
 
         {/* Shelf Shelf List */}
         <View style={styles.listContainer}>
+          {loading ? (
+            <LibrarySkeleton />
+          ) : (
           <FlashList
             data={shelves}
             keyExtractor={(item) => item.category}
@@ -176,6 +185,7 @@ export default function LibraryScreen(): React.JSX.Element {
               </View>
             )}
           />
+          )}
         </View>
       </View>
     </SafeAreaView>

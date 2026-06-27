@@ -97,6 +97,9 @@ export function useTheme(): {
   mode: ThemeMode;
   isDark: boolean;
   fontScale: FontScale;
+  arabicFont: string;
+  urduFont: string;
+  englishFont: string;
   accentColor: string | null;
   backgroundColor: string | null;
   glass: boolean;
@@ -116,6 +119,9 @@ export function useTheme(): {
   const setGlass = useThemeStore((s) => s.setGlass);
   const resetAppearance = useThemeStore((s) => s.resetAppearance);
   const fontScale = usePreferencesStore((s) => s.fontScale);
+  const arabicFont = usePreferencesStore((s) => s.arabicFont);
+  const urduFont = usePreferencesStore((s) => s.urduFont);
+  const englishFont = usePreferencesStore((s) => s.englishFont);
 
   const [systemScheme, setSystemScheme] = useState<ColorSchemeName>(
     Appearance.getColorScheme()
@@ -145,6 +151,9 @@ export function useTheme(): {
     mode,
     isDark: theme.isDark,
     fontScale,
+    arabicFont,
+    urduFont,
+    englishFont,
     accentColor,
     backgroundColor,
     glass,

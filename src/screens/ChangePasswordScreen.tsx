@@ -14,6 +14,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, NavigationProp } from '@react-navigation/native';
 import { Ionicons as RawIonicons } from '@expo/vector-icons';
 import { useTranslation } from '@/i18n';
+import { BackButton } from '@/components/BackButton';
 import { useTheme, Theme } from '@/theme';
 import { authService } from '@/services/authService';
 import { AuthField } from '@/components/auth/AuthField';
@@ -63,17 +64,7 @@ export default function ChangePasswordScreen(): React.JSX.Element {
     <SafeAreaView edges={['top', 'bottom']} style={styles.safeArea}>
       {/* Top bar */}
       <View style={[styles.topBar, isRTL && styles.rowRTL]}>
-        <TouchableOpacity
-          style={styles.iconBtn}
-          onPress={() => navigation.goBack()}
-          activeOpacity={0.7}
-        >
-          <Ionicons
-            name={isRTL ? 'chevron-forward' : 'chevron-back'}
-            size={24}
-            color={theme.textPrimary}
-          />
-        </TouchableOpacity>
+        <BackButton />
         <Text style={styles.topTitle}>{t('auth.changeTitle')}</Text>
         <View style={styles.iconBtn} />
       </View>

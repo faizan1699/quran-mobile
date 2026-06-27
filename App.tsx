@@ -7,20 +7,15 @@ import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import AppNavigator from '@/navigation/AppNavigator';
 import { useDeviceLocation } from '@/hooks/useDeviceLocation';
 import { usePrayerAzanScheduler } from '@/hooks/usePrayerAzanScheduler';
+import { useReminderScheduler } from '@/hooks/useReminderScheduler';
 import { useTheme } from '@/theme';
 import { appFonts } from '@/theme/fonts';
 import {
   applyGlobalFontScalePatch,
   setGlobalFontScale,
-  setGlobalFontFamilyMap,
 } from '@/theme/fontScalePatch';
 import { usePreferencesStore, FONT_SCALE_VALUES } from '@/store/usePreferencesStore';
-import {
-  DEFAULT_ARABIC_FONT,
-  DEFAULT_URDU_FONT,
-  isKnownArabicFont,
-  isKnownUrduFont,
-} from '@/theme/scriptFonts';
+import { applySelectedFonts } from '@/theme/scriptFonts';
 import { colors } from '@/tokens';
 
 // Patch RN's Text once so the app-wide font-size preference scales every label.
@@ -49,6 +44,7 @@ function AppContent(): React.JSX.Element {
   });
 
   usePrayerAzanScheduler();
+  useReminderScheduler();
 
   // Keep the global text-scale multiplier in sync with the stored preference.
   // Reading it here re-renders AppContent (and the active screen) when it
@@ -56,16 +52,12 @@ function AppContent(): React.JSX.Element {
   const fontScale = usePreferencesStore((s) => s.fontScale);
   setGlobalFontScale(FONT_SCALE_VALUES[fontScale]);
 
-  // Live-swap the Arabic/Urdu faces app-wide: any text styled with the base
-  // family is re-rendered in the user's selected font (see fontScalePatch).
+  // Live-swap the Arabic/Urdu/English faces app-wide: any text styled with a
+  // base family is re-rendered in the user's selected font (see fontScalePatch).
   const arabicFont = usePreferencesStore((s) => s.arabicFont);
   const urduFont = usePreferencesStore((s) => s.urduFont);
-  setGlobalFontFamilyMap({
-    [DEFAULT_ARABIC_FONT]: isKnownArabicFont(arabicFont)
-      ? arabicFont
-      : DEFAULT_ARABIC_FONT,
-    [DEFAULT_URDU_FONT]: isKnownUrduFont(urduFont) ? urduFont : DEFAULT_URDU_FONT,
-  });
+  const englishFont = usePreferencesStore((s) => s.englishFont);
+  applySelectedFonts(arabicFont, urduFont, englishFont);
 
   useEffect(() => {
     if (didAttemptAutoLocation) {

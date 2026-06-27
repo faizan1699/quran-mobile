@@ -13,6 +13,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons as RawIonicons } from '@expo/vector-icons';
 import { useNavigation, NavigationProp } from '@react-navigation/native';
 import { useTranslation } from '@/i18n';
+import { BackButton } from '@/components/BackButton';
 import { useTheme, Theme } from '@/theme';
 import { useUserStore } from '@/store/useUserStore';
 import { useQiblaDirection, QiblaStatus } from '@/hooks/useQiblaDirection';
@@ -183,18 +184,7 @@ export default function QiblaScreen(): React.JSX.Element {
   return (
     <SafeAreaView edges={['top']} style={styles.safeArea}>
       <View style={[styles.header, isRTL && styles.rowRTL]}>
-        <TouchableOpacity
-          style={styles.iconButton}
-          onPress={() => navigation.goBack()}
-          activeOpacity={0.7}
-          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-        >
-          <Ionicons
-            name={isRTL ? 'chevron-forward' : 'chevron-back'}
-            size={22}
-            color={theme.textPrimary}
-          />
-        </TouchableOpacity>
+        <BackButton />
 
         <Text style={styles.headerTitle}>{language === 'ur' ? 'قبلہ نما' : 'Qibla'}</Text>
 

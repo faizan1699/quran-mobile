@@ -6,7 +6,17 @@ import {
   AudioPlayer,
   AudioStatus,
 } from 'expo-audio';
-import { TimedWord } from '@shared-types';
+import { TimedWord, QuranAyah } from '@shared-types';
+import { quranService } from '@/services/quranService';
+import {
+  getReciter,
+  ayahAudioUrl,
+  translationAudioUrl,
+  translationReciterFor,
+} from '@/data/reciters';
+import { getSurahMeta } from '@/data/surahMeta';
+import { usePreferencesStore } from '@/store/usePreferencesStore';
+import { useUserStore } from '@/store/useUserStore';
 
 export enum PlaybackState {
   None = 'none',
@@ -64,8 +74,18 @@ let player: AudioPlayer | null = null;
 let statusSub: StatusSub | null = null;
 let pendingSeekSeconds = 0;
 let audioModeReady = false;
+let audioModePromise: Promise<void> | null = null;
 let advancing = false;
+let continuousAdvance = false;
 let prefetchTimer: ReturnType<typeof setTimeout> | null = null;
+let shouldBePlaying = false;
+let loadWatchdog: ReturnType<typeof setTimeout> | null = null;
+let loadRetries = 0;
+let lastTrack: AudioTrackInfo | null = null;
+let lastStartSeconds = 0;
+
+const LOAD_TIMEOUT_MS = 9000;
+const MAX_LOAD_RETRIES = 2;
 
 function fetchWebDurationSeconds(url: string): Promise<number> {
   return new Promise((resolve) => {
@@ -127,18 +147,68 @@ async function fetchDurationSeconds(url: string): Promise<number> {
 
 async function ensureAudioMode(): Promise<void> {
   if (audioModeReady) return;
-  audioModeReady = true;
-  try {
-    await setAudioModeAsync({
+  if (!audioModePromise) {
+    audioModePromise = setAudioModeAsync({
       allowsRecording: false,
       shouldPlayInBackground: true,
       playsInSilentMode: true,
       shouldRouteThroughEarpiece: false,
       interruptionMode: 'duckOthers',
-    });
-  } catch {
-    audioModeReady = false;
+    })
+      .then(() => {
+        audioModeReady = true;
+      })
+      .catch(() => {
+        audioModePromise = null;
+      });
   }
+  await audioModePromise;
+}
+
+const LAST_SURAH_NUMBER = 114;
+
+async function buildSurahTracks(surahNumber: number): Promise<AudioTrackInfo[]> {
+  const ayahs = await quranService.getSurahAyahs(surahNumber);
+  if (!ayahs || ayahs.length === 0) {
+    return [];
+  }
+
+  const reciter = getReciter(usePreferencesStore.getState().reciterId);
+  const playTranslation = usePreferencesStore.getState().playTranslation;
+  const language = useUserStore.getState().language;
+  const meta = getSurahMeta(surahNumber);
+  const surahName = meta?.englishName ?? `Surah ${surahNumber}`;
+  const translationLabel = language === 'ur' ? 'ترجمہ' : 'Translation';
+  const translationTextFor = (a: QuranAyah) => (language === 'ur' ? a.urdu : a.translation);
+
+  const tracks: AudioTrackInfo[] = [];
+  for (const a of ayahs) {
+    tracks.push({
+      id: a.id,
+      url: ayahAudioUrl(reciter, surahNumber, a.ayah),
+      title: `${surahName} ${surahNumber}:${a.ayah}`,
+      artist: reciter.name,
+      arabic: a.arabic,
+      translation: translationTextFor(a) ?? undefined,
+      subtitle: `${surahName} • ${surahNumber}:${a.ayah}`,
+      surahNumber,
+    });
+
+    if (playTranslation && translationTextFor(a)) {
+      tracks.push({
+        id: `${a.id}::${language}`,
+        url: translationAudioUrl(surahNumber, a.ayah, language),
+        title: `${surahName} ${surahNumber}:${a.ayah} — ${translationLabel}`,
+        artist: translationReciterFor(language).name,
+        arabic: a.arabic,
+        translation: translationTextFor(a) ?? undefined,
+        subtitle: `${surahName} • ${surahNumber}:${a.ayah} • ${translationLabel}`,
+        surahNumber,
+      });
+    }
+  }
+
+  return tracks;
 }
 
 export const useAudioStore = create<AudioState>((set, get) => {
@@ -171,7 +241,15 @@ export const useAudioStore = create<AudioState>((set, get) => {
     }, 1200);
   };
 
+  const clearLoadWatchdog = () => {
+    if (loadWatchdog) {
+      clearTimeout(loadWatchdog);
+      loadWatchdog = null;
+    }
+  };
+
   const teardownPlayer = () => {
+    clearLoadWatchdog();
     if (statusSub) {
       try {
         statusSub.remove();
@@ -189,6 +267,27 @@ export const useAudioStore = create<AudioState>((set, get) => {
     }
   };
 
+  const maybeAutoAdvanceSurah = async (): Promise<boolean> => {
+    if (!usePreferencesStore.getState().autoPlayNextSurah) {
+      return false;
+    }
+    const finished = get().currentTrack?.surahNumber;
+    if (!finished || finished >= LAST_SURAH_NUMBER) {
+      return false;
+    }
+    try {
+      const tracks = await buildSurahTracks(finished + 1);
+      if (tracks.length === 0) {
+        return false;
+      }
+      await get().playTrack(tracks[0]);
+      await get().setQueue(tracks);
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
   const handleTrackFinished = async () => {
     if (advancing) return;
     advancing = true;
@@ -200,10 +299,22 @@ export const useAudioStore = create<AudioState>((set, get) => {
       }
       const { queue, currentTrack } = get();
       const idx = currentTrack ? queue.findIndex((t) => t.id === currentTrack.id) : -1;
-      if (idx >= 0 && idx < queue.length - 1) {
-        await get().skipToNext();
-      } else {
+      const stopHere = () => {
+        shouldBePlaying = false;
+        clearLoadWatchdog();
         set({ playbackState: PlaybackState.Paused });
+      };
+      if (idx >= 0 && idx < queue.length - 1) {
+        if (usePreferencesStore.getState().autoPlayNextAyah) {
+          await get().skipToNext();
+        } else {
+          stopHere();
+        }
+      } else {
+        const advanced = await maybeAutoAdvanceSurah();
+        if (!advanced) {
+          stopHere();
+        }
       }
     } finally {
       advancing = false;
@@ -221,14 +332,28 @@ export const useAudioStore = create<AudioState>((set, get) => {
       void player.seekTo(seconds);
     }
 
+    if (status.playing) {
+      clearLoadWatchdog();
+      loadRetries = 0;
+      continuousAdvance = false;
+    } else if (shouldBePlaying && player && !status.isBuffering && !status.didJustFinish) {
+      try {
+        player.play();
+      } catch {}
+    }
+
     const durationSeconds = status.duration || 0;
 
     set({
       position: status.currentTime,
       duration: durationSeconds,
-      playbackState: status.isBuffering
-        ? PlaybackState.Buffering
-        : status.playing
+      playbackState: status.playing
+        ? PlaybackState.Playing
+        : status.isBuffering
+        ? continuousAdvance
+          ? PlaybackState.Playing
+          : PlaybackState.Buffering
+        : shouldBePlaying
         ? PlaybackState.Playing
         : PlaybackState.Paused,
     });
@@ -251,13 +376,32 @@ export const useAudioStore = create<AudioState>((set, get) => {
     } catch {}
   };
 
+  const armLoadWatchdog = (track: AudioTrackInfo, startSeconds: number) => {
+    clearLoadWatchdog();
+    loadWatchdog = setTimeout(() => {
+      loadWatchdog = null;
+      if (!shouldBePlaying) return;
+      if (player && get().playbackState === PlaybackState.Playing) return;
+      if (loadRetries < MAX_LOAD_RETRIES) {
+        loadRetries += 1;
+        startPlayback(track, startSeconds);
+      } else {
+        shouldBePlaying = false;
+        set({ playbackState: PlaybackState.Paused });
+      }
+    }, LOAD_TIMEOUT_MS);
+  };
+
   const startPlayback = (track: AudioTrackInfo, startSeconds: number) => {
     teardownPlayer();
+    lastTrack = track;
+    lastStartSeconds = startSeconds;
     pendingSeekSeconds = startSeconds > 0 ? startSeconds : 0;
     player = createAudioPlayer({ uri: track.url }, { updateInterval: 100 });
     statusSub = player.addListener('playbackStatusUpdate', onPlaybackStatusUpdate);
     applyRate(get().playbackRate);
     player.play();
+    armLoadWatchdog(track, startSeconds);
   };
 
   return {
@@ -273,16 +417,25 @@ export const useAudioStore = create<AudioState>((set, get) => {
 
     playTrack: async (track, startSeconds = 0) => {
       try {
+        const prev = get().playbackState;
+        const continuingSession =
+          shouldBePlaying ||
+          prev === PlaybackState.Playing ||
+          prev === PlaybackState.Buffering;
+        continuousAdvance = continuingSession;
+        shouldBePlaying = true;
+        loadRetries = 0;
         set({
           currentTrack: track,
           position: startSeconds,
           duration: get().durations[track.id] || 0,
-          playbackState: PlaybackState.Buffering,
+          playbackState: continuingSession
+            ? PlaybackState.Playing
+            : PlaybackState.Buffering,
         });
 
         await ensureAudioMode();
         startPlayback(track, startSeconds);
-        set({ playbackState: PlaybackState.Playing });
       } catch (error) {
         console.error('Error playing track via expo-audio:', error);
       }
@@ -292,15 +445,22 @@ export const useAudioStore = create<AudioState>((set, get) => {
       try {
         const { currentTrack, playbackState } = get();
         if (!player) {
-          if (currentTrack) await get().playTrack(currentTrack);
+          if (currentTrack) await get().playTrack(currentTrack, get().position);
           return;
         }
         if (playbackState === PlaybackState.Playing) {
+          shouldBePlaying = false;
+          continuousAdvance = false;
+          clearLoadWatchdog();
           player.pause();
           set({ playbackState: PlaybackState.Paused });
         } else {
+          shouldBePlaying = true;
+          loadRetries = 0;
+          await ensureAudioMode();
           player.play();
-          set({ playbackState: PlaybackState.Playing });
+          armLoadWatchdog(lastTrack ?? currentTrack!, get().position);
+          set({ playbackState: PlaybackState.Buffering });
         }
       } catch (error) {
         console.error('Error toggling playback:', error);
@@ -360,6 +520,10 @@ export const useAudioStore = create<AudioState>((set, get) => {
 
     resetPlayer: async () => {
       try {
+        shouldBePlaying = false;
+        continuousAdvance = false;
+        loadRetries = 0;
+        lastTrack = null;
         if (prefetchTimer) {
           clearTimeout(prefetchTimer);
           prefetchTimer = null;
@@ -476,6 +640,12 @@ if (typeof module !== 'undefined' && module?.hot) {
       player?.pause();
       player?.remove();
     } catch {}
+    if (loadWatchdog) {
+      clearTimeout(loadWatchdog);
+      loadWatchdog = null;
+    }
+    shouldBePlaying = false;
+    continuousAdvance = false;
     player = null;
     statusSub = null;
   });

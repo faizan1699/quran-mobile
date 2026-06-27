@@ -163,6 +163,26 @@ export async function listNotes(search?: string): Promise<Note[]> {
   return rows.map(rowToNote);
 }
 
+export async function listNotesForSurah(surahNumber: number): Promise<Note[]> {
+  if (IS_WEB) {
+    return webNotes
+      .filter((n) => n.surahNumber === surahNumber && n.ayahNumber != null)
+      .sort(
+        (a, b) =>
+          (a.ayahNumber ?? 0) - (b.ayahNumber ?? 0) || b.updatedAt - a.updatedAt
+      )
+      .map((n) => ({ ...n }));
+  }
+  const db = await getDb();
+  const rows = await db.getAllAsync<NoteRow>(
+    `SELECT * FROM notes
+     WHERE surah_number = ? AND ayah_number IS NOT NULL
+     ORDER BY ayah_number ASC, updated_at DESC`,
+    surahNumber
+  );
+  return rows.map(rowToNote);
+}
+
 export async function getNote(id: number): Promise<Note | null> {
   if (IS_WEB) {
     const n = webNotes.find((x) => x.id === id);

@@ -2,6 +2,8 @@ import React from 'react';
 import { StyleSheet, View, Text, TouchableOpacity } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useAudioStore, State, usePlaybackTimeline } from '@/store/useAudioStore';
+import { usePreferencesStore } from '@/store/usePreferencesStore';
+import { Icon } from '@/components/Icon';
 import { useTheme, Theme } from '@/theme';
 import { typography, spacing, shadows } from '@/tokens';
 
@@ -14,7 +16,17 @@ export function MiniPlayer(): React.JSX.Element | null {
   const playbackState = useAudioStore((s) => s.playbackState);
   const togglePlay = useAudioStore((s) => s.togglePlay);
   const resetPlayer = useAudioStore((s) => s.resetPlayer);
+  const autoOpenPlayer = usePreferencesStore((s) => s.autoOpenPlayer);
   const timeline = usePlaybackTimeline();
+
+  const hadTrack = React.useRef(false);
+  React.useEffect(() => {
+    const hasTrack = currentTrack != null;
+    if (hasTrack && !hadTrack.current && autoOpenPlayer) {
+      navigation.navigate('Player');
+    }
+    hadTrack.current = hasTrack;
+  }, [currentTrack, autoOpenPlayer, navigation]);
 
   if (!currentTrack) return null;
 
@@ -30,7 +42,12 @@ export function MiniPlayer(): React.JSX.Element | null {
       </View>
       <View style={styles.row}>
         <TouchableOpacity style={styles.playBtn} onPress={togglePlay} activeOpacity={0.85}>
-          <Text style={styles.playIcon}>{isBuffering ? '…' : isPlaying ? '⏸' : '▶️'}</Text>
+          <Icon
+            name={isBuffering ? 'hourglass-outline' : isPlaying ? 'pause' : 'play'}
+            size={18}
+            color="#FFFFFF"
+            style={!isPlaying && !isBuffering ? styles.playGlyphOffset : undefined}
+          />
         </TouchableOpacity>
 
         <TouchableOpacity style={styles.meta} onPress={open} activeOpacity={0.7}>
@@ -46,18 +63,22 @@ export function MiniPlayer(): React.JSX.Element | null {
           style={styles.iconBtn}
           onPress={open}
           activeOpacity={0.7}
+          accessibilityRole="button"
+          accessibilityLabel="Open player"
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
         >
-          <Text style={styles.expandIcon}>⌃</Text>
+          <Icon name="chevron-up" size={22} color={theme.textSecondary} />
         </TouchableOpacity>
 
         <TouchableOpacity
           style={styles.iconBtn}
           onPress={resetPlayer}
           activeOpacity={0.7}
+          accessibilityRole="button"
+          accessibilityLabel="Close player"
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
         >
-          <Text style={styles.closeIcon}>✕</Text>
+          <Icon name="close" size={20} color={theme.textMuted} />
         </TouchableOpacity>
       </View>
     </View>
@@ -96,9 +117,8 @@ const createStyles = (theme: Theme) =>
       justifyContent: 'center',
       alignItems: 'center',
     },
-    playIcon: {
-      fontSize: 16,
-      color: '#FFFFFF',
+    playGlyphOffset: {
+      marginLeft: 2,
     },
     meta: {
       flex: 1,
@@ -120,15 +140,6 @@ const createStyles = (theme: Theme) =>
       height: 34,
       justifyContent: 'center',
       alignItems: 'center',
-    },
-    expandIcon: {
-      fontSize: 18,
-      fontWeight: 'bold',
-      color: theme.textSecondary,
-    },
-    closeIcon: {
-      fontSize: 16,
-      color: theme.textMuted,
     },
   });
 

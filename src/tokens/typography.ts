@@ -34,7 +34,7 @@ export const typography = {
     normal: 1.5,
     relaxed: 1.8,
     urdu: 2.2,
-    arabic: 2.2,
+    arabic: 2.5,
   },
   letterSpacing: {
     tight: -0.5,

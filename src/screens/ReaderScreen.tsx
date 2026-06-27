@@ -5,6 +5,7 @@ import { useRoute, useNavigation, RouteProp, NavigationProp } from '@react-navig
 import { useTranslation } from '@/i18n';
 import { useAudioStore } from '@/store/useAudioStore';
 import { GlobalHeader } from '@/components/GlobalHeader';
+import { BackButton } from '@/components/BackButton';
 import { AudioPlayerBar } from '@/components/AudioPlayerBar';
 import { offlineStorageService, OfflineContent } from '@/services/offlineStorageService';
 import { useTheme, Theme } from '@/theme';
@@ -74,14 +75,7 @@ export default function ReaderScreen(): React.JSX.Element {
       <View style={styles.mainContainer}>
         {/* Navigation / Control Row */}
         <View style={[styles.controlRow, isRTL && styles.rowRTL]}>
-          <TouchableOpacity
-            style={[styles.backBtn, isRTL && styles.backBtnRTL]}
-            onPress={() => navigation.goBack()}
-            activeOpacity={0.7}
-          >
-            <Text style={styles.backArrow}>{isRTL ? '◀' : '◀'}</Text>
-            <Text style={styles.backText}>{language === 'ur' ? 'واپس' : 'Back'}</Text>
-          </TouchableOpacity>
+          <BackButton />
 
           {/* Floating font size trigger */}
           <TouchableOpacity
@@ -209,25 +203,6 @@ const createStyles = (theme: Theme) =>
   },
   rowRTL: {
     flexDirection: 'row-reverse',
-  },
-  backBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 6,
-  },
-  backBtnRTL: {
-    flexDirection: 'row-reverse',
-  },
-  backArrow: {
-    fontSize: 12,
-    color: theme.textBrandGreen,
-    marginRight: 4,
-  },
-  backText: {
-    fontFamily: typography.fontFamily.english,
-    fontSize: typography.fontSize.sm,
-    color: theme.textBrandGreen,
-    fontWeight: 'bold',
   },
   fontBtn: {
     flexDirection: 'row',
