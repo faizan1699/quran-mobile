@@ -1,7 +1,10 @@
+export type SharePatternId = 'none' | 'stars' | 'diamonds' | 'lattice' | 'dots';
+
 export interface ShareBgPreset {
   id: string;
   bg: string;
   accent: string;
+  pattern?: SharePatternId;
 }
 
 export const SHARE_BG_PRESETS: ShareBgPreset[] = [
@@ -13,6 +16,12 @@ export const SHARE_BG_PRESETS: ShareBgPreset[] = [
   { id: 'maroon', bg: '#3A1212', accent: '#E0CA8A' },
   { id: 'cream', bg: '#F5ECD0', accent: '#1B4332' },
   { id: 'paper', bg: '#FFFFFF', accent: '#1B4332' },
+  { id: 'emerald-stars', bg: '#0D2B1E', accent: '#D4B96A', pattern: 'stars' },
+  { id: 'royal-lattice', bg: '#1A1033', accent: '#E0CA8A', pattern: 'lattice' },
+  { id: 'midnight-diamonds', bg: '#0B1220', accent: '#C9B27A', pattern: 'diamonds' },
+  { id: 'teal-stars', bg: '#0E3B3B', accent: '#E0CA8A', pattern: 'stars' },
+  { id: 'maroon-dots', bg: '#3A1212', accent: '#E0CA8A', pattern: 'dots' },
+  { id: 'cream-lattice', bg: '#F5ECD0', accent: '#1B4332', pattern: 'lattice' },
 ];
 
 export interface ShareFontSize {

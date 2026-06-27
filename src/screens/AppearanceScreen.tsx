@@ -537,44 +537,6 @@ export default function AppearanceScreen(): React.JSX.Element {
           </View>
         </View>
 
-        <View style={styles.sectionCard}>
-          <Text style={[styles.sectionHeading, isRTL && styles.textRTL]}>
-            {t('settings.textSize')}
-          </Text>
-          <View style={[styles.segment, isRTL && styles.rowRTL]}>
-            {FONT_SCALE_OPTIONS.map((opt) => {
-              const active = fontScale === opt.value;
-              return (
-                <TouchableOpacity
-                  key={opt.value}
-                  style={[styles.fontScaleItem, active && styles.fontScaleItemActive]}
-                  onPress={() => setFontScale(opt.value)}
-                  activeOpacity={0.85}
-                >
-                  <Text
-                    style={[
-                      styles.fontScaleGlyph,
-                      active && styles.fontScaleTextActive,
-                      { fontSize: opt.preview },
-                    ]}
-                  >
-                    A
-                  </Text>
-                  <Text
-                    style={[
-                      styles.fontScaleLabel,
-                      active && styles.fontScaleTextActive,
-                    ]}
-                    numberOfLines={1}
-                  >
-                    {t(opt.labelKey)}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-        </View>
-
         <FontDropdown
           title={t('settings.arabicFont')}
           desc={t('settings.arabicFontDesc')}
@@ -582,6 +544,10 @@ export default function AppearanceScreen(): React.JSX.Element {
           options={ARABIC_FONTS}
           selected={arabicFont}
           onSelect={setArabicFont}
+          sizeLabel={t('settings.textSize')}
+          sizeOptions={sizeOptions}
+          sizeValue={arabicFontScale}
+          onSizeChange={setArabicFontScale}
           styles={styles}
           theme={theme}
           isRTL={isRTL}
@@ -595,6 +561,10 @@ export default function AppearanceScreen(): React.JSX.Element {
           options={URDU_FONTS}
           selected={urduFont}
           onSelect={setUrduFont}
+          sizeLabel={t('settings.textSize')}
+          sizeOptions={sizeOptions}
+          sizeValue={urduFontScale}
+          onSizeChange={setUrduFontScale}
           styles={styles}
           theme={theme}
           isRTL={isRTL}
@@ -608,6 +578,10 @@ export default function AppearanceScreen(): React.JSX.Element {
           options={ENGLISH_FONTS}
           selected={englishFont}
           onSelect={setEnglishFont}
+          sizeLabel={t('settings.textSize')}
+          sizeOptions={sizeOptions}
+          sizeValue={englishFontScale}
+          onSizeChange={setEnglishFontScale}
           styles={styles}
           theme={theme}
           isRTL={isRTL}
@@ -956,6 +930,13 @@ const createStyles = (theme: Theme) =>
     fontRadioActive: {
       borderColor: theme.accentGreen,
       backgroundColor: theme.accentGreen,
+    },
+    sizeLabel: {
+      fontFamily: typography.fontFamily.english,
+      fontSize: typography.fontSize.xs,
+      fontWeight: typography.fontWeight.semibold,
+      color: theme.textSecondary,
+      marginTop: spacing[3],
     },
     segment: {
       flexDirection: 'row',

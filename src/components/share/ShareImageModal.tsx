@@ -15,6 +15,7 @@ import { useTranslation } from '@/i18n';
 import { useTheme, Theme } from '@/theme';
 import { spacing, borderRadius, typography } from '@/tokens';
 import { ShareCard } from '@/components/share/ShareCard';
+import { IslamicPattern } from '@/components/share/IslamicPattern';
 import { captureAndShareView } from '@/services/shareImage';
 import {
   SHARE_BG_PRESETS,
@@ -174,6 +175,7 @@ export function ShareImageModal({
                 radius={radius}
                 borderWidth={border.width}
                 borderStyle={border.style}
+                pattern={preset.pattern}
                 fontArabic={size.arabic}
                 fontTranslation={size.translation}
                 fontReference={size.reference}
@@ -239,7 +241,20 @@ export function ShareImageModal({
                       },
                     ]}
                   >
-                    <View style={[styles.swatchDot, { backgroundColor: p.accent }]} />
+                    {p.pattern ? (
+                      <IslamicPattern
+                        variant={p.pattern}
+                        color={p.accent}
+                        opacity={0.7}
+                        tile={13}
+                        coverW={46}
+                        coverH={46}
+                      />
+                    ) : (
+                      <View
+                        style={[styles.swatchDot, { backgroundColor: p.accent }]}
+                      />
+                    )}
                   </TouchableOpacity>
                 ))}
               </View>
@@ -578,6 +593,7 @@ const createStyles = (theme: Theme) =>
       borderColor: theme.border,
       alignItems: 'center',
       justifyContent: 'center',
+      overflow: 'hidden',
     },
     swatchDot: {
       width: 10,

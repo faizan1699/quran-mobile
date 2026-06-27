@@ -2,7 +2,8 @@ import React, { forwardRef } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { typography } from '@/tokens';
 import { readableText, withAlpha, mix, lighten, darken } from '@/theme/colorUtils';
-import type { ShareBorderStyle } from '@/data/sharePresets';
+import type { ShareBorderStyle, SharePatternId } from '@/data/sharePresets';
+import { IslamicPattern } from '@/components/share/IslamicPattern';
 
 interface ShareCardProps {
   width: number;
@@ -11,6 +12,7 @@ interface ShareCardProps {
   radius: number;
   borderWidth: number;
   borderStyle: ShareBorderStyle;
+  pattern?: SharePatternId;
   fontArabic: number;
   fontTranslation: number;
   fontReference: number;
@@ -33,6 +35,7 @@ export const ShareCard = forwardRef<View, ShareCardProps>(function ShareCard(
     radius,
     borderWidth,
     borderStyle,
+    pattern = 'none',
     fontArabic,
     fontTranslation,
     fontReference,
@@ -99,10 +102,15 @@ export const ShareCard = forwardRef<View, ShareCardProps>(function ShareCard(
           width,
           backgroundColor: bg,
           borderRadius: radius,
+          overflow: 'hidden',
           ...borderProps,
         },
       ]}
     >
+      {pattern !== 'none' ? (
+        <IslamicPattern variant={pattern} color={accent} opacity={0.13} />
+      ) : null}
+
       {hasInnerLine ? (
         <View
           pointerEvents="none"
