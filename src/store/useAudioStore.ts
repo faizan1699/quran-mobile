@@ -76,6 +76,7 @@ let pendingSeekSeconds = 0;
 let audioModeReady = false;
 let audioModePromise: Promise<void> | null = null;
 let advancing = false;
+let continuousAdvance = false;
 let prefetchTimer: ReturnType<typeof setTimeout> | null = null;
 let shouldBePlaying = false;
 let loadWatchdog: ReturnType<typeof setTimeout> | null = null;
@@ -327,6 +328,7 @@ export const useAudioStore = create<AudioState>((set, get) => {
     if (status.playing) {
       clearLoadWatchdog();
       loadRetries = 0;
+      continuousAdvance = false;
     } else if (shouldBePlaying && player && !status.isBuffering && !status.didJustFinish) {
       try {
         player.play();
@@ -341,8 +343,10 @@ export const useAudioStore = create<AudioState>((set, get) => {
       playbackState: status.playing
         ? PlaybackState.Playing
         : status.isBuffering
-        ? PlaybackState.Buffering
-        : shouldBePlaying && !status.didJustFinish
+        ? continuousAdvance
+          ? PlaybackState.Playing
+          : PlaybackState.Buffering
+        : shouldBePlaying
         ? PlaybackState.Playing
         : PlaybackState.Paused,
     });
@@ -408,7 +412,10 @@ export const useAudioStore = create<AudioState>((set, get) => {
       try {
         const prev = get().playbackState;
         const continuingSession =
-          prev === PlaybackState.Playing || prev === PlaybackState.Buffering;
+          shouldBePlaying ||
+          prev === PlaybackState.Playing ||
+          prev === PlaybackState.Buffering;
+        continuousAdvance = continuingSession;
         shouldBePlaying = true;
         loadRetries = 0;
         set({
@@ -436,6 +443,7 @@ export const useAudioStore = create<AudioState>((set, get) => {
         }
         if (playbackState === PlaybackState.Playing) {
           shouldBePlaying = false;
+          continuousAdvance = false;
           clearLoadWatchdog();
           player.pause();
           set({ playbackState: PlaybackState.Paused });
@@ -506,6 +514,7 @@ export const useAudioStore = create<AudioState>((set, get) => {
     resetPlayer: async () => {
       try {
         shouldBePlaying = false;
+        continuousAdvance = false;
         loadRetries = 0;
         lastTrack = null;
         if (prefetchTimer) {
@@ -629,6 +638,7 @@ if (typeof module !== 'undefined' && module?.hot) {
       loadWatchdog = null;
     }
     shouldBePlaying = false;
+    continuousAdvance = false;
     player = null;
     statusSub = null;
   });

@@ -5,6 +5,7 @@ import {
   Text,
   ScrollView,
   TouchableOpacity,
+  Pressable,
   Modal,
   TextInput,
   Platform,
@@ -13,7 +14,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons as RawIonicons } from '@expo/vector-icons';
 import { useNavigation, NavigationProp } from '@react-navigation/native';
 import { useTranslation } from '@/i18n';
-import { useTheme, Theme } from '@/theme';
+import { useTheme, Theme, ThemeMode } from '@/theme';
 import { ACCENT_PRESETS, BACKGROUND_PRESETS } from '@/theme/appearancePresets';
 import { normalizeHex, isValidHex, readableText } from '@/theme/colorUtils';
 import { RootStackParamList } from '@/navigation/types';
@@ -21,6 +22,7 @@ import { usePreferencesStore, FontScale } from '@/store/usePreferencesStore';
 import {
   ARABIC_FONTS,
   URDU_FONTS,
+  ENGLISH_FONTS,
   ScriptFontOption,
 } from '@/theme/scriptFonts';
 import { GlobalHeader } from '@/components/GlobalHeader';
@@ -39,6 +41,12 @@ const FONT_SCALE_OPTIONS: { value: FontScale; labelKey: string; preview: number 
   { value: 'default', labelKey: 'settings.textSizeDefault', preview: 15 },
   { value: 'large', labelKey: 'settings.textSizeLarge', preview: 18 },
   { value: 'xlarge', labelKey: 'settings.textSizeXLarge', preview: 21 },
+];
+
+const THEME_MODE_OPTIONS: { value: ThemeMode; labelKey: string; icon: string }[] = [
+  { value: 'system', labelKey: 'theme.system', icon: 'phone-portrait-outline' },
+  { value: 'light', labelKey: 'theme.light', icon: 'sunny-outline' },
+  { value: 'dark', labelKey: 'theme.dark', icon: 'moon-outline' },
 ];
 
 function sameColor(a: string | null, b: string | null): boolean {
@@ -76,68 +84,125 @@ function Swatch({
   );
 }
 
-function FontSection({
+function FontDropdown({
   title,
   desc,
+  chooseLabel,
   options,
   selected,
   onSelect,
   styles,
   theme,
   isRTL,
+  scriptRTL,
 }: {
   title: string;
   desc: string;
+  chooseLabel: string;
   options: ScriptFontOption[];
   selected: string;
   onSelect: (family: string) => void;
   styles: Styles;
   theme: Theme;
   isRTL: boolean;
+  scriptRTL: boolean;
 }): React.JSX.Element {
+  const [open, setOpen] = useState(false);
+  const current = options.find((o) => o.family === selected) ?? options[0];
+
   return (
     <View style={styles.sectionCard}>
       <Text style={[styles.sectionHeading, isRTL && styles.textRTL]}>{title}</Text>
       <Text style={[styles.sectionDesc, isRTL && styles.textRTL]}>{desc}</Text>
-      <View style={styles.fontList}>
-        {options.map((opt) => {
-          const active = selected === opt.family;
-          return (
-            <TouchableOpacity
-              key={`${opt.family}-${opt.label}`}
-              style={[styles.fontOption, active && styles.fontOptionActive]}
-              onPress={() => onSelect(opt.family)}
-              activeOpacity={0.85}
+
+      <TouchableOpacity
+        style={[styles.dropdownTrigger, isRTL && styles.rowRTL]}
+        onPress={() => setOpen(true)}
+        activeOpacity={0.8}
+      >
+        <View style={styles.dropdownTriggerTextCol}>
+          <Text
+            style={[
+              styles.dropdownSample,
+              scriptRTL && styles.sampleRTL,
+              { fontFamily: current.previewFamily ?? current.family },
+            ]}
+            numberOfLines={1}
+          >
+            {current.sample}
+          </Text>
+          <Text style={styles.dropdownCurrentLabel} numberOfLines={1}>
+            {current.label}
+          </Text>
+        </View>
+        <Ionicons name="chevron-down" size={18} color={theme.textSecondary} />
+      </TouchableOpacity>
+
+      <Modal
+        visible={open}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setOpen(false)}
+      >
+        <Pressable style={styles.modalOverlay} onPress={() => setOpen(false)}>
+          <Pressable style={styles.dropdownModalCard}>
+            <Text style={[styles.modalTitle, isRTL && styles.textRTL]}>
+              {chooseLabel}
+            </Text>
+            <ScrollView
+              style={styles.dropdownList}
+              contentContainerStyle={styles.dropdownListContent}
+              showsVerticalScrollIndicator={false}
             >
-              <View style={styles.fontOptionTextCol}>
-                <Text
-                  style={[
-                    styles.fontSample,
-                    { fontFamily: opt.previewFamily ?? opt.family },
-                  ]}
-                  numberOfLines={1}
-                >
-                  {opt.sample}
-                </Text>
-                <Text
-                  style={[
-                    styles.fontOptionLabel,
-                    active && styles.fontOptionLabelActive,
-                  ]}
-                  numberOfLines={1}
-                >
-                  {opt.label}
-                </Text>
-              </View>
-              <View style={[styles.fontRadio, active && styles.fontRadioActive]}>
-                {active ? (
-                  <Ionicons name="checkmark" size={14} color={theme.textOnAccent} />
-                ) : null}
-              </View>
-            </TouchableOpacity>
-          );
-        })}
-      </View>
+              {options.map((opt) => {
+                const active = selected === opt.family;
+                return (
+                  <TouchableOpacity
+                    key={`${opt.family}-${opt.label}`}
+                    style={[styles.fontOption, active && styles.fontOptionActive]}
+                    onPress={() => {
+                      onSelect(opt.family);
+                      setOpen(false);
+                    }}
+                    activeOpacity={0.85}
+                  >
+                    <View style={styles.fontOptionTextCol}>
+                      <Text
+                        style={[
+                          styles.fontSample,
+                          scriptRTL && styles.sampleRTL,
+                          { fontFamily: opt.previewFamily ?? opt.family },
+                        ]}
+                        numberOfLines={1}
+                      >
+                        {opt.sample}
+                      </Text>
+                      <Text
+                        style={[
+                          styles.fontOptionLabel,
+                          active && styles.fontOptionLabelActive,
+                        ]}
+                        numberOfLines={1}
+                      >
+                        {opt.label}
+                      </Text>
+                    </View>
+                    <View style={[styles.fontRadio, active && styles.fontRadioActive]}>
+                      {active ? (
+                        <Ionicons
+                          name="checkmark"
+                          size={14}
+                          color={theme.textOnAccent}
+                        />
+                      ) : null}
+                    </View>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </View>
   );
 }
@@ -147,7 +212,6 @@ export default function AppearanceScreen(): React.JSX.Element {
   const {
     theme,
     mode,
-    isDark,
     accentColor,
     backgroundColor,
     glass,
@@ -166,13 +230,14 @@ export default function AppearanceScreen(): React.JSX.Element {
   const setArabicFont = usePreferencesStore((s) => s.setArabicFont);
   const urduFont = usePreferencesStore((s) => s.urduFont);
   const setUrduFont = usePreferencesStore((s) => s.setUrduFont);
+  const englishFont = usePreferencesStore((s) => s.englishFont);
+  const setEnglishFont = usePreferencesStore((s) => s.setEnglishFont);
 
   const [pickerTarget, setPickerTarget] = useState<PickerTarget | null>(null);
   const [hexInput, setHexInput] = useState('');
   const [originalColor, setOriginalColor] = useState<string | null>(null);
 
   const isWeb = Platform.OS === 'web';
-  const followSystem = mode === 'system';
 
   const accentInPresets = ACCENT_PRESETS.some((c) => sameColor(c, accentColor));
   const backgroundInPresets = BACKGROUND_PRESETS.some((c) =>
@@ -253,37 +318,36 @@ export default function AppearanceScreen(): React.JSX.Element {
           <Text style={[styles.sectionHeading, isRTL && styles.textRTL]}>
             {t('settings.darkMode')}
           </Text>
-          <View style={[styles.toggleRow, isRTL && styles.rowRTL]}>
-            <View style={styles.toggleTextCol}>
-              <Text style={[styles.toggleLabel, isRTL && styles.textRTL]}>
-                {t('settings.darkMode')}
-              </Text>
-              <Text style={[styles.toggleDesc, isRTL && styles.textRTL]}>
-                {t('settings.darkModeDesc')}
-              </Text>
-            </View>
-            <AppSwitch
-              value={isDark}
-              onValueChange={(v) => setMode(v ? 'dark' : 'light')}
-              disabled={followSystem}
-              accessibilityLabel={t('settings.darkMode')}
-            />
-          </View>
-          <View style={styles.divider} />
-          <View style={[styles.toggleRow, isRTL && styles.rowRTL]}>
-            <View style={styles.toggleTextCol}>
-              <Text style={[styles.toggleLabel, isRTL && styles.textRTL]}>
-                {t('settings.matchDevice')}
-              </Text>
-              <Text style={[styles.toggleDesc, isRTL && styles.textRTL]}>
-                {t('settings.matchDeviceDesc')}
-              </Text>
-            </View>
-            <AppSwitch
-              value={followSystem}
-              onValueChange={(v) => setMode(v ? 'system' : isDark ? 'dark' : 'light')}
-              accessibilityLabel={t('settings.matchDevice')}
-            />
+          <Text style={[styles.sectionDesc, isRTL && styles.textRTL]}>
+            {t('theme.desc')}
+          </Text>
+          <View style={[styles.segment, isRTL && styles.rowRTL]}>
+            {THEME_MODE_OPTIONS.map((opt) => {
+              const active = mode === opt.value;
+              return (
+                <TouchableOpacity
+                  key={opt.value}
+                  style={[styles.fontScaleItem, active && styles.fontScaleItemActive]}
+                  onPress={() => setMode(opt.value)}
+                  activeOpacity={0.85}
+                >
+                  <Ionicons
+                    name={opt.icon}
+                    size={18}
+                    color={active ? theme.textOnAccent : theme.textSecondary}
+                  />
+                  <Text
+                    style={[
+                      styles.fontScaleLabel,
+                      active && styles.fontScaleTextActive,
+                    ]}
+                    numberOfLines={1}
+                  >
+                    {t(opt.labelKey)}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
           </View>
         </View>
 
@@ -468,26 +532,43 @@ export default function AppearanceScreen(): React.JSX.Element {
           </View>
         </View>
 
-        <FontSection
+        <FontDropdown
           title={t('settings.arabicFont')}
           desc={t('settings.arabicFontDesc')}
+          chooseLabel={t('settings.chooseFont')}
           options={ARABIC_FONTS}
           selected={arabicFont}
           onSelect={setArabicFont}
           styles={styles}
           theme={theme}
           isRTL={isRTL}
+          scriptRTL
         />
 
-        <FontSection
+        <FontDropdown
           title={t('settings.urduFont')}
           desc={t('settings.urduFontDesc')}
+          chooseLabel={t('settings.chooseFont')}
           options={URDU_FONTS}
           selected={urduFont}
           onSelect={setUrduFont}
           styles={styles}
           theme={theme}
           isRTL={isRTL}
+          scriptRTL
+        />
+
+        <FontDropdown
+          title={t('settings.englishFont')}
+          desc={t('settings.englishFontDesc')}
+          chooseLabel={t('settings.chooseFont')}
+          options={ENGLISH_FONTS}
+          selected={englishFont}
+          onSelect={setEnglishFont}
+          styles={styles}
+          theme={theme}
+          isRTL={isRTL}
+          scriptRTL={false}
         />
 
         <Text style={[styles.previewCaption, isRTL && styles.textRTL]}>
@@ -500,6 +581,24 @@ export default function AppearanceScreen(): React.JSX.Element {
           <Text style={[styles.previewBody, isRTL && styles.textRTL]}>
             {t('settings.previewBody')}
           </Text>
+
+          <View style={styles.previewScriptRow}>
+            <Text style={styles.previewScriptLabel}>
+              {t('settings.previewArabicLabel')}
+            </Text>
+            <Text style={styles.previewArabic} numberOfLines={1}>
+              بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ
+            </Text>
+          </View>
+          <View style={styles.previewScriptRow}>
+            <Text style={styles.previewScriptLabel}>
+              {t('settings.previewUrduLabel')}
+            </Text>
+            <Text style={styles.previewUrdu} numberOfLines={1}>
+              اللہ کے نام سے جو نہایت مہربان ہے
+            </Text>
+          </View>
+          <View style={styles.previewDivider} />
           <View style={[styles.previewActions, isRTL && styles.rowRTL]}>
             <View style={styles.previewPrimaryBtn}>
               <Text style={styles.previewPrimaryText}>
@@ -729,9 +828,50 @@ const createStyles = (theme: Theme) =>
       height: 1,
       backgroundColor: theme.borderDivider,
     },
-    fontList: {
+    dropdownTrigger: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: spacing[3],
       marginTop: spacing[3],
+      paddingVertical: spacing[2],
+      paddingHorizontal: spacing[3],
+      borderRadius: borderRadius.card,
+      borderWidth: 1.5,
+      borderColor: theme.border,
+      backgroundColor: theme.bgMuted,
+    },
+    dropdownTriggerTextCol: {
+      flex: 1,
+    },
+    dropdownSample: {
+      fontSize: 24,
+      lineHeight: 42,
+      color: theme.textPrimary,
+    },
+    dropdownCurrentLabel: {
+      fontFamily: typography.fontFamily.english,
+      fontSize: typography.fontSize.xs,
+      fontWeight: typography.fontWeight.semibold,
+      color: theme.textBrandGreen,
+      marginTop: 2,
+    },
+    dropdownModalCard: {
+      width: '100%',
+      maxWidth: 420,
+      maxHeight: '80%',
+      backgroundColor: theme.bgElevated,
+      borderRadius: borderRadius.card,
+      padding: spacing.cardPadding,
+      borderWidth: 1,
+      borderColor: theme.border,
+    },
+    dropdownList: {
+      marginTop: spacing[2],
+    },
+    dropdownListContent: {
       gap: spacing[2],
+      paddingBottom: spacing[1],
     },
     fontOption: {
       flexDirection: 'row',
@@ -756,6 +896,8 @@ const createStyles = (theme: Theme) =>
       fontSize: 26,
       lineHeight: 46,
       color: theme.textPrimary,
+    },
+    sampleRTL: {
       textAlign: 'right',
       writingDirection: 'rtl',
     },
@@ -844,6 +986,43 @@ const createStyles = (theme: Theme) =>
       fontSize: typography.fontSize.sm,
       color: theme.textSecondary,
       marginTop: spacing[2],
+      marginBottom: spacing[3],
+    },
+    previewScriptRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: spacing[3],
+      marginTop: spacing[1],
+    },
+    previewScriptLabel: {
+      fontFamily: typography.fontFamily.english,
+      fontSize: typography.fontSize.xs,
+      fontWeight: '600',
+      color: theme.textMuted,
+    },
+    previewArabic: {
+      flex: 1,
+      fontFamily: typography.fontFamily.arabic,
+      fontSize: 24,
+      lineHeight: 44,
+      color: theme.textPrimary,
+      textAlign: 'right',
+      writingDirection: 'rtl',
+    },
+    previewUrdu: {
+      flex: 1,
+      fontFamily: typography.fontFamily.urdu,
+      fontSize: 18,
+      lineHeight: 40,
+      color: theme.textPrimary,
+      textAlign: 'right',
+      writingDirection: 'rtl',
+    },
+    previewDivider: {
+      height: 1,
+      backgroundColor: theme.borderDivider,
+      marginTop: spacing[3],
       marginBottom: spacing[3],
     },
     previewActions: {

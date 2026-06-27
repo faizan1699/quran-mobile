@@ -87,6 +87,7 @@ export default function SettingsScreen(): React.JSX.Element {
     dailyAyahReminder,
     jummahReminder,
     autoPlayNextAyah,
+    autoOpenPlayer,
     downloadOverWifiOnly,
     downloadedIds,
     setPref,
@@ -382,6 +383,15 @@ export default function SettingsScreen(): React.JSX.Element {
             label={t('settings.autoPlayNextAyah')}
             value={autoPlayNextAyah}
             onValueChange={(v) => setPref('autoPlayNextAyah', v)}
+            isRTL={isRTL}
+            styles={styles}
+          />
+          <View style={styles.toggleDivider} />
+          <ToggleRow
+            label={t('settings.autoOpenPlayer')}
+            description={t('settings.autoOpenPlayerDesc')}
+            value={autoOpenPlayer}
+            onValueChange={(v) => setPref('autoOpenPlayer', v)}
             isRTL={isRTL}
             styles={styles}
           />

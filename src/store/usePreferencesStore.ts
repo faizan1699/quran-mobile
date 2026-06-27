@@ -2,7 +2,12 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { DEFAULT_RECITER_ID } from '@/data/reciters';
-import { DEFAULT_ARABIC_FONT, DEFAULT_URDU_FONT } from '@/theme/scriptFonts';
+import {
+  DEFAULT_ARABIC_FONT,
+  DEFAULT_URDU_FONT,
+  DEFAULT_ENGLISH_FONT,
+  applySelectedFonts,
+} from '@/theme/scriptFonts';
 
 /**
  * App-wide text size preference. Maps to a multiplier applied to every
@@ -35,6 +40,7 @@ interface PreferencesState {
   // Reading & audio
   autoPlayNextAyah: boolean;
   autoPlayNextSurah: boolean;
+  autoOpenPlayer: boolean;
   keepScreenOn: boolean;
   playTranslation: boolean;
   highlightWords: boolean;
@@ -49,6 +55,8 @@ interface PreferencesState {
   arabicFont: string;
   /** Font family used for Urdu text (live-swapped app-wide). */
   urduFont: string;
+  /** Font family used for English / UI text (live-swapped app-wide). */
+  englishFont: string;
 
   setPref: (
     key:
@@ -57,6 +65,7 @@ interface PreferencesState {
       | 'jummahReminder'
       | 'autoPlayNextAyah'
       | 'autoPlayNextSurah'
+      | 'autoOpenPlayer'
       | 'keepScreenOn'
       | 'playTranslation'
       | 'highlightWords'
@@ -66,6 +75,7 @@ interface PreferencesState {
   setFontScale: (scale: FontScale) => void;
   setArabicFont: (family: string) => void;
   setUrduFont: (family: string) => void;
+  setEnglishFont: (family: string) => void;
   setReciterId: (id: string) => void;
   toggleDownloaded: (id: string) => void;
   isDownloaded: (id: string) => boolean;
@@ -79,6 +89,7 @@ export const usePreferencesStore = create<PreferencesState>()(
       jummahReminder: true,
       autoPlayNextAyah: true,
       autoPlayNextSurah: true,
+      autoOpenPlayer: true,
       keepScreenOn: false,
       playTranslation: false,
       highlightWords: false,
@@ -88,14 +99,26 @@ export const usePreferencesStore = create<PreferencesState>()(
       fontScale: 'default',
       arabicFont: DEFAULT_ARABIC_FONT,
       urduFont: DEFAULT_URDU_FONT,
+      englishFont: DEFAULT_ENGLISH_FONT,
 
       setPref: (key, value) => set({ [key]: value } as Partial<PreferencesState>),
 
       setFontScale: (fontScale) => set({ fontScale }),
 
-      setArabicFont: (arabicFont) => set({ arabicFont }),
+      setArabicFont: (arabicFont) => {
+        set({ arabicFont });
+        applySelectedFonts(arabicFont, get().urduFont, get().englishFont);
+      },
 
-      setUrduFont: (urduFont) => set({ urduFont }),
+      setUrduFont: (urduFont) => {
+        set({ urduFont });
+        applySelectedFonts(get().arabicFont, urduFont, get().englishFont);
+      },
+
+      setEnglishFont: (englishFont) => {
+        set({ englishFont });
+        applySelectedFonts(get().arabicFont, get().urduFont, englishFont);
+      },
 
       setReciterId: (reciterId) => set({ reciterId }),
 
@@ -111,6 +134,11 @@ export const usePreferencesStore = create<PreferencesState>()(
     {
       name: 'dawat-preferences-storage',
       storage: createJSONStorage(() => AsyncStorage),
+      onRehydrateStorage: () => (state) => {
+        if (state) {
+          applySelectedFonts(state.arabicFont, state.urduFont, state.englishFont);
+        }
+      },
     }
   )
 );

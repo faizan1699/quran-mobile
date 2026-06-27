@@ -239,36 +239,40 @@ export default function PlayerScreen(): React.JSX.Element | null {
           </Text>
         )}
 
-        <View style={styles.speedRow}>
-          <Text style={styles.speedLabel}>{isUrdu ? 'رفتار' : 'Speed'}</Text>
-          <TouchableOpacity
-            style={[styles.speedPill, playbackRate !== 1 && styles.speedPillActive]}
-            onPress={cycleRate}
-            activeOpacity={0.8}
-          >
-            <Text
-              style={[styles.speedText, playbackRate !== 1 && styles.speedTextActive]}
-            >
-              {playbackRate}×
+        <View style={styles.optionsRow}>
+          <View style={styles.optionGroup}>
+            <Text style={styles.speedLabel} numberOfLines={1}>
+              {isUrdu ? 'رفتار' : 'Speed'}
             </Text>
-          </TouchableOpacity>
-        </View>
+            <TouchableOpacity
+              style={[styles.speedPill, playbackRate !== 1 && styles.speedPillActive]}
+              onPress={cycleRate}
+              activeOpacity={0.8}
+            >
+              <Text
+                style={[styles.speedText, playbackRate !== 1 && styles.speedTextActive]}
+              >
+                {playbackRate}×
+              </Text>
+            </TouchableOpacity>
+          </View>
 
-        <View style={styles.autoNextRow}>
-          <Text style={styles.speedLabel}>
-            {isUrdu ? 'اگلی سورت خودکار چلائیں' : 'Auto-play next surah'}
-          </Text>
-          <TouchableOpacity
-            style={[styles.speedPill, autoPlayNextSurah && styles.speedPillActive]}
-            onPress={() => setPref('autoPlayNextSurah', !autoPlayNextSurah)}
-            activeOpacity={0.8}
-          >
-            <Text
-              style={[styles.speedText, autoPlayNextSurah && styles.speedTextActive]}
-            >
-              {autoPlayNextSurah ? (isUrdu ? 'آن' : 'On') : (isUrdu ? 'آف' : 'Off')}
+          <View style={styles.optionGroup}>
+            <Text style={styles.speedLabel} numberOfLines={1}>
+              {isUrdu ? 'اگلی سورت خودکار' : 'Auto-next'}
             </Text>
-          </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.speedPill, autoPlayNextSurah && styles.speedPillActive]}
+              onPress={() => setPref('autoPlayNextSurah', !autoPlayNextSurah)}
+              activeOpacity={0.8}
+            >
+              <Text
+                style={[styles.speedText, autoPlayNextSurah && styles.speedTextActive]}
+              >
+                {autoPlayNextSurah ? (isUrdu ? 'آن' : 'On') : (isUrdu ? 'آف' : 'Off')}
+              </Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
         <View style={styles.controlsRow}>
@@ -500,24 +504,24 @@ const createStyles = (theme: Theme) =>
       textAlign: 'center',
       marginTop: 2,
     },
-    speedRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'center',
-      gap: spacing[2],
-      marginTop: spacing[3],
-    },
-    autoNextRow: {
+    optionsRow: {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
-      gap: spacing[2],
+      gap: spacing[3],
       marginTop: spacing[3],
+    },
+    optionGroup: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing[2],
+      flexShrink: 1,
     },
     speedLabel: {
       fontFamily: typography.fontFamily.english,
       fontSize: typography.fontSize.xs,
       color: theme.textMuted,
+      flexShrink: 1,
     },
     speedPill: {
       minWidth: 56,

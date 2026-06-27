@@ -6,8 +6,25 @@ import { useTranslation } from '@/i18n';
 import { useTheme, Theme } from '@/theme';
 import { GlobalHeader } from '@/components/GlobalHeader';
 import { offlineStorageService, OfflineDuaa, OfflineBook, OfflineChapter } from '@/services/offlineStorageService';
+import { useAudioStore, PlaybackState } from '@/store/useAudioStore';
 import { colors, borderRadius, spacing, typography, shadows } from '@/tokens';
 import { RootStackParamList } from '@/navigation/types';
+
+function duaTrackId(id: string): string {
+  return `dua-${id}`;
+}
+
+function duaToTrack(item: OfflineDuaa, title: string, translation: string, artist: string) {
+  return {
+    id: duaTrackId(item.id),
+    url: item.audioUrl ?? '',
+    title,
+    artist,
+    arabic: item.arabicText,
+    translation,
+    subtitle: title,
+  };
+}
 
 export default function DuaaScreen(): React.JSX.Element {
   const { t, language, isRTL } = useTranslation();
@@ -18,6 +35,12 @@ export default function DuaaScreen(): React.JSX.Element {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeSegment, setActiveSegment] = useState<'duaa' | 'hadith'>('duaa');
   const [favoritesOnly, setFavoritesOnly] = useState(false);
+
+  const currentTrack = useAudioStore((s) => s.currentTrack);
+  const playbackState = useAudioStore((s) => s.playbackState);
+  const playTrack = useAudioStore((s) => s.playTrack);
+  const togglePlay = useAudioStore((s) => s.togglePlay);
+  const setQueue = useAudioStore((s) => s.setQueue);
   
   // Data States
   const [duaas, setDuaas] = useState<OfflineDuaa[]>([]);
@@ -84,6 +107,32 @@ export default function DuaaScreen(): React.JSX.Element {
       (b.titleUrdu && b.titleUrdu.includes(searchQuery))
     );
   });
+
+  const duaaArtist = language === 'ur' ? 'دعا' : 'Dua';
+
+  const buildDuaQueue = () =>
+    filteredDuaas
+      .filter((d) => d.audioUrl)
+      .map((d) => {
+        const title = language === 'ur' && d.titleUrdu ? d.titleUrdu : d.title;
+        const translation = language === 'ur' && d.urduText ? d.urduText : d.translation;
+        return duaToTrack(d, title, translation, duaaArtist);
+      });
+
+  const playDua = (item: OfflineDuaa) => {
+    if (!item.audioUrl) return;
+    if (currentTrack?.id === duaTrackId(item.id)) {
+      void togglePlay();
+      return;
+    }
+    const tracks = buildDuaQueue();
+    const target = tracks.find((tk) => tk.id === duaTrackId(item.id));
+    if (!target) return;
+    void (async () => {
+      await playTrack(target);
+      await setQueue(tracks);
+    })();
+  };
 
   return (
     <SafeAreaView edges={['top']} style={styles.safeArea}>
@@ -175,24 +224,50 @@ export default function DuaaScreen(): React.JSX.Element {
                 filteredDuaas.map((item) => {
                   const titleStr = language === 'ur' && item.titleUrdu ? item.titleUrdu : item.title;
                   const translationStr = language === 'ur' && item.urduText ? item.urduText : item.translation;
+                  const isCurrent = currentTrack?.id === duaTrackId(item.id);
+                  const isPlaying = isCurrent && playbackState === PlaybackState.Playing;
 
                   return (
-                    <View key={item.id} style={styles.duaaCard}>
+                    <View key={item.id} style={[styles.duaaCard, isCurrent && styles.duaaCardActive]}>
                       <View style={[styles.duaaHeader, isRTL && styles.rowRTL]}>
                         <Text style={[styles.duaaTitle, isRTL && styles.textRTL]}>
                           {titleStr}
                         </Text>
-                        
-                        {/* Favorite Star Tag */}
-                        <TouchableOpacity 
-                          onPress={() => toggleFavorite(item.id)}
-                          activeOpacity={0.7}
-                          style={styles.starButton}
-                        >
-                          <Text style={[styles.starIcon, item.isFavorite && styles.starIconActive]}>
-                            {item.isFavorite ? '★' : '☆'}
-                          </Text>
-                        </TouchableOpacity>
+
+                        <View style={[styles.headerActions, isRTL && styles.rowRTL]}>
+                          {/* Audio Play Button */}
+                          {item.audioUrl ? (
+                            <TouchableOpacity
+                              onPress={() => playDua(item)}
+                              activeOpacity={0.7}
+                              style={[styles.playButton, isCurrent && styles.playButtonActive]}
+                              accessibilityLabel={
+                                isPlaying
+                                  ? language === 'ur'
+                                    ? 'روکیں'
+                                    : 'Pause'
+                                  : language === 'ur'
+                                  ? 'چلائیں'
+                                  : 'Play'
+                              }
+                            >
+                              <Text style={[styles.playIcon, isCurrent && styles.playIconActive]}>
+                                {isPlaying ? '❚❚' : '▶'}
+                              </Text>
+                            </TouchableOpacity>
+                          ) : null}
+
+                          {/* Favorite Star Tag */}
+                          <TouchableOpacity
+                            onPress={() => toggleFavorite(item.id)}
+                            activeOpacity={0.7}
+                            style={styles.starButton}
+                          >
+                            <Text style={[styles.starIcon, item.isFavorite && styles.starIconActive]}>
+                              {item.isFavorite ? '★' : '☆'}
+                            </Text>
+                          </TouchableOpacity>
+                        </View>
                       </View>
 
                       <Text style={styles.duaaArabic}>{item.arabicText}</Text>
@@ -416,11 +491,41 @@ const createStyles = (theme: Theme) =>
     borderColor: theme.border,
     ...shadows.sm,
   },
+  duaaCardActive: {
+    borderColor: theme.accentGreen,
+  },
   duaaHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: spacing[2],
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing[1],
+  },
+  playButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: theme.bgPage,
+    borderWidth: 1,
+    borderColor: theme.border,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  playButtonActive: {
+    backgroundColor: theme.accentGreen,
+    borderColor: theme.accentGreen,
+  },
+  playIcon: {
+    fontSize: 13,
+    color: theme.textBrandGreen,
+    fontWeight: 'bold',
+  },
+  playIconActive: {
+    color: colors.neutral[0],
   },
   duaaTitle: {
     fontFamily: typography.fontFamily.english,

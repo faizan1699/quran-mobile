@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   StyleSheet,
   View,
@@ -12,7 +12,12 @@ import {
   Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRoute, useNavigation, RouteProp } from '@react-navigation/native';
+import {
+  useRoute,
+  useNavigation,
+  useFocusEffect,
+  RouteProp,
+} from '@react-navigation/native';
 import { useTranslation } from '@/i18n';
 import { useAudioStore, State } from '@/store/useAudioStore';
 import { useQuranStore } from '@/store/useQuranStore';
@@ -34,6 +39,8 @@ import { useTheme, Theme } from '@/theme';
 import { colors, spacing, typography, borderRadius, shadows } from '@/tokens';
 import { RootStackParamList } from '@/navigation/types';
 import { QuranAyah } from '@shared-types';
+import { listNotesForSurah, Note } from '@/services/notesDb';
+import { NOTE_COLOR_HEX } from '@/data/noteColors';
 
 type QuranReaderRouteProp = RouteProp<RootStackParamList, 'QuranReader'>;
 
@@ -87,8 +94,30 @@ export default function QuranReaderScreen(): React.JSX.Element {
   const [reciterModalOpen, setReciterModalOpen] = useState(false);
   const [readMode, setReadMode] = useState(false);
 
+  const [notesByAyah, setNotesByAyah] = useState<Record<number, Note[]>>({});
+
   const scrollRef = useRef<ScrollView | null>(null);
   const ayahOffsets = useRef<Record<string, number>>({});
+
+  const loadAyahNotes = useCallback(async () => {
+    try {
+      const list = await listNotesForSurah(surahNumber);
+      const map: Record<number, Note[]> = {};
+      for (const note of list) {
+        if (note.ayahNumber == null) continue;
+        (map[note.ayahNumber] ??= []).push(note);
+      }
+      setNotesByAyah(map);
+    } catch {
+      setNotesByAyah({});
+    }
+  }, [surahNumber]);
+
+  useFocusEffect(
+    useCallback(() => {
+      void loadAyahNotes();
+    }, [loadAyahNotes])
+  );
 
   useEffect(() => {
     const id = currentTrack?.id;
@@ -312,6 +341,7 @@ export default function QuranReaderScreen(): React.JSX.Element {
           ayahs.map((ayah: QuranAyah) => {
             const bookmarked = bookmarks.some((b) => b.id === ayah.id);
             const translation = translationTextFor(ayah);
+            const ayahNotes = notesByAyah[ayah.ayah] ?? [];
 
             return (
               <View
@@ -358,8 +388,21 @@ export default function QuranReaderScreen(): React.JSX.Element {
                         })
                       }
                       activeOpacity={0.7}
+                      accessibilityLabel={t('quran.addNote')}
                     >
-                      <Text style={styles.bookmarkIcon}>📝</Text>
+                      <Text
+                        style={[
+                          styles.bookmarkIcon,
+                          ayahNotes.length > 0 && styles.bookmarkActive,
+                        ]}
+                      >
+                        📝
+                      </Text>
+                      {ayahNotes.length > 0 && (
+                        <View style={styles.noteCountBadge}>
+                          <Text style={styles.noteCountText}>{ayahNotes.length}</Text>
+                        </View>
+                      )}
                     </TouchableOpacity>
 
                     <TouchableOpacity
@@ -447,6 +490,52 @@ export default function QuranReaderScreen(): React.JSX.Element {
                     </View>
                   );
                 })()}
+
+                {/* Saved notes for this ayah */}
+                {ayahNotes.length > 0 && (
+                  <View style={styles.notesBlock}>
+                    <Text style={[styles.notesHeading, isRTL && styles.textRTL]}>
+                      {`📝 ${t('quran.myNotes')}`}
+                    </Text>
+                    {ayahNotes.map((note) => (
+                      <TouchableOpacity
+                        key={note.id}
+                        style={[
+                          styles.noteCard,
+                          {
+                            borderLeftColor: note.color
+                              ? NOTE_COLOR_HEX[note.color]
+                              : theme.accentGreen,
+                          },
+                        ]}
+                        onPress={() =>
+                          navigation.navigate('NoteEditor', { noteId: note.id })
+                        }
+                        activeOpacity={0.7}
+                      >
+                        {!!note.title.trim() && (
+                          <Text
+                            style={[styles.noteCardTitle, isRTL && styles.textRTL]}
+                            numberOfLines={1}
+                          >
+                            {note.title.trim()}
+                          </Text>
+                        )}
+                        {!!note.body.trim() && (
+                          <Text
+                            style={[styles.noteCardBody, isRTL && styles.textRTL]}
+                            numberOfLines={4}
+                          >
+                            {note.body.trim()}
+                          </Text>
+                        )}
+                        <Text style={[styles.noteCardHint, isRTL && styles.textRTL]}>
+                          {t('quran.tapToEdit')}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                )}
               </View>
             );
           })
@@ -712,6 +801,7 @@ const createStyles = (theme: Theme) =>
       color: theme.textArabic,
       textAlign: 'right',
       writingDirection: 'rtl',
+      includeFontPadding: true,
     },
     ayahMarker: {
       fontFamily: typography.fontFamily.arabic,
@@ -745,6 +835,7 @@ const createStyles = (theme: Theme) =>
       height: 34,
       justifyContent: 'center',
       alignItems: 'center',
+      position: 'relative',
     },
     bookmarkIcon: {
       fontSize: 18,
@@ -752,6 +843,60 @@ const createStyles = (theme: Theme) =>
     },
     bookmarkActive: {
       opacity: 1,
+    },
+    noteCountBadge: {
+      position: 'absolute',
+      top: 0,
+      right: 0,
+      minWidth: 16,
+      height: 16,
+      paddingHorizontal: 3,
+      borderRadius: 8,
+      backgroundColor: theme.accentGreen,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    noteCountText: {
+      fontFamily: typography.fontFamily.english,
+      fontSize: 10,
+      fontWeight: typography.fontWeight.bold,
+      color: colors.neutral[0],
+    },
+    notesBlock: {
+      marginTop: spacing[3],
+      gap: spacing[2],
+    },
+    notesHeading: {
+      fontFamily: typography.fontFamily.english,
+      fontSize: typography.fontSize.xs,
+      fontWeight: typography.fontWeight.bold,
+      color: theme.textBrandGreen,
+    },
+    noteCard: {
+      backgroundColor: theme.bgMuted,
+      borderRadius: borderRadius.button,
+      borderLeftWidth: 3,
+      borderLeftColor: theme.accentGreen,
+      padding: spacing[3],
+      gap: spacing[1],
+    },
+    noteCardTitle: {
+      fontFamily: typography.fontFamily.english,
+      fontSize: typography.fontSize.sm,
+      fontWeight: typography.fontWeight.bold,
+      color: theme.textPrimary,
+    },
+    noteCardBody: {
+      fontFamily: typography.fontFamily.english,
+      fontSize: typography.fontSize.sm,
+      color: theme.textSecondary,
+      lineHeight: 20,
+    },
+    noteCardHint: {
+      fontFamily: typography.fontFamily.english,
+      fontSize: typography.fontSize.xs,
+      color: theme.textMuted,
+      marginTop: 2,
     },
     playBtn: {
       backgroundColor: theme.accentSoft,
@@ -774,6 +919,8 @@ const createStyles = (theme: Theme) =>
       color: theme.textArabic,
       textAlign: 'right',
       writingDirection: 'rtl',
+      includeFontPadding: true,
+      paddingVertical: spacing[1],
       marginVertical: spacing[2],
     },
     arabicActive: {

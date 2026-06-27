@@ -5,7 +5,7 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  FlatList,
+  SectionList,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
@@ -26,6 +26,16 @@ type IconProps = { name: string; size?: number; color?: string };
 const Ionicons = RawIonicons as unknown as React.ComponentType<IconProps>;
 
 type NavProp = NativeStackNavigationProp<RootStackParamList>;
+
+interface NoteSection {
+  key: string;
+  hasRef: boolean;
+  surahNumber: number | null;
+  ayahNumber: number | null;
+  surahName: string | null;
+  title: string;
+  data: Note[];
+}
 
 const MONTHS = [
   'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
@@ -56,14 +66,56 @@ export default function NotesListScreen(): React.JSX.Element {
     }, [loadNotes])
   );
 
+  const sections = useMemo<NoteSection[]>(() => {
+    const groups = new Map<string, NoteSection>();
+    for (const note of notes) {
+      const hasRef = note.surahNumber != null && note.ayahNumber != null;
+      const key = hasRef ? `${note.surahNumber}:${note.ayahNumber}` : 'unlinked';
+      let group = groups.get(key);
+      if (!group) {
+        group = {
+          key,
+          hasRef,
+          surahNumber: note.surahNumber,
+          ayahNumber: note.ayahNumber,
+          surahName: note.surahName,
+          title: '',
+          data: [],
+        };
+        groups.set(key, group);
+      }
+      if (hasRef && !group.surahName && note.surahName) {
+        group.surahName = note.surahName;
+      }
+      group.data.push(note);
+    }
+
+    const ordered = Array.from(groups.values());
+    ordered.sort((a, b) => {
+      if (a.hasRef !== b.hasRef) {
+        return a.hasRef ? -1 : 1;
+      }
+      if (!a.hasRef) {
+        return 0;
+      }
+      if (a.surahNumber !== b.surahNumber) {
+        return (a.surahNumber ?? 0) - (b.surahNumber ?? 0);
+      }
+      return (a.ayahNumber ?? 0) - (b.ayahNumber ?? 0);
+    });
+
+    for (const group of ordered) {
+      group.title = group.hasRef
+        ? `${group.surahName ?? ''} ${group.surahNumber}:${group.ayahNumber}`.trim()
+        : t('notes.general');
+    }
+    return ordered;
+  }, [notes, t]);
+
   const renderItem = useCallback(
     ({ item }: { item: Note }) => {
       const accent = item.color ? NOTE_COLOR_HEX[item.color] : theme.border;
       const preview = item.body.trim();
-      const ayahLabel =
-        item.surahNumber && item.ayahNumber
-          ? `${item.surahName ?? ''} ${item.surahNumber}:${item.ayahNumber}`.trim()
-          : null;
 
       return (
         <TouchableOpacity
@@ -103,16 +155,6 @@ export default function NotesListScreen(): React.JSX.Element {
             ) : null}
 
             <View style={[styles.cardMetaRow, isRTL && styles.rowRTL]}>
-              {ayahLabel ? (
-                <View style={styles.ayahChip}>
-                  <Ionicons name="book-outline" size={11} color={theme.textBrandGreen} />
-                  <Text style={styles.ayahChipText} numberOfLines={1}>
-                    {ayahLabel}
-                  </Text>
-                </View>
-              ) : (
-                <View />
-              )}
               <Text style={styles.cardDate}>{formatDate(item.updatedAt)}</Text>
             </View>
           </View>
@@ -120,6 +162,28 @@ export default function NotesListScreen(): React.JSX.Element {
       );
     },
     [styles, theme, isRTL, t, navigation, togglePin]
+  );
+
+  const renderSectionHeader = useCallback(
+    ({ section }: { section: NoteSection }) => (
+      <View style={[styles.sectionHeader, isRTL && styles.rowRTL]}>
+        <View style={[styles.sectionHeaderMain, isRTL && styles.rowRTL]}>
+          <Ionicons
+            name={section.hasRef ? 'book' : 'document-text-outline'}
+            size={13}
+            color={theme.textBrandGreen}
+          />
+          <Text
+            style={[styles.sectionHeaderText, isRTL && styles.textRTL]}
+            numberOfLines={1}
+          >
+            {section.title}
+          </Text>
+        </View>
+        <Text style={styles.sectionCount}>{section.data.length}</Text>
+      </View>
+    ),
+    [styles, theme, isRTL]
   );
 
   return (
@@ -160,13 +224,16 @@ export default function NotesListScreen(): React.JSX.Element {
         </View>
       </View>
 
-      <FlatList
-        data={notes}
+      <SectionList
+        sections={sections}
         keyExtractor={(item) => String(item.id)}
         renderItem={renderItem}
+        renderSectionHeader={renderSectionHeader}
+        stickySectionHeadersEnabled={false}
         contentContainerStyle={styles.listContent}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
+        SectionSeparatorComponent={null}
         ListEmptyComponent={
           loaded ? (
             <View style={styles.emptyWrap}>
@@ -294,25 +361,38 @@ const createStyles = (theme: Theme) =>
     cardMetaRow: {
       flexDirection: 'row',
       alignItems: 'center',
-      justifyContent: 'space-between',
+      justifyContent: 'flex-end',
       gap: spacing[2],
       marginTop: spacing[1],
     },
-    ayahChip: {
+    sectionHeader: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 4,
-      backgroundColor: theme.isDark ? 'rgba(58,158,110,0.15)' : theme.accentSoft,
-      borderRadius: borderRadius.full,
-      paddingHorizontal: spacing[2],
-      paddingVertical: 3,
-      maxWidth: '70%',
+      justifyContent: 'space-between',
+      gap: spacing[2],
+      paddingHorizontal: spacing[1],
+      marginTop: spacing[2],
     },
-    ayahChipText: {
+    sectionHeaderMain: {
+      flex: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing[2],
+    },
+    sectionHeaderText: {
+      flexShrink: 1,
+      fontFamily: typography.fontFamily.english,
+      fontSize: typography.fontSize.sm,
+      fontWeight: typography.fontWeight.bold,
+      color: theme.textBrandGreen,
+    },
+    sectionCount: {
+      minWidth: 18,
+      textAlign: 'center',
       fontFamily: typography.fontFamily.english,
       fontSize: typography.fontSize.xs,
       fontWeight: typography.fontWeight.semibold,
-      color: theme.textBrandGreen,
+      color: theme.textMuted,
     },
     cardDate: {
       fontFamily: typography.fontFamily.english,

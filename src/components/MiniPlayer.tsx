@@ -2,6 +2,7 @@ import React from 'react';
 import { StyleSheet, View, Text, TouchableOpacity } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useAudioStore, State, usePlaybackTimeline } from '@/store/useAudioStore';
+import { usePreferencesStore } from '@/store/usePreferencesStore';
 import { useTheme, Theme } from '@/theme';
 import { typography, spacing, shadows } from '@/tokens';
 
@@ -14,7 +15,17 @@ export function MiniPlayer(): React.JSX.Element | null {
   const playbackState = useAudioStore((s) => s.playbackState);
   const togglePlay = useAudioStore((s) => s.togglePlay);
   const resetPlayer = useAudioStore((s) => s.resetPlayer);
+  const autoOpenPlayer = usePreferencesStore((s) => s.autoOpenPlayer);
   const timeline = usePlaybackTimeline();
+
+  const hadTrack = React.useRef(false);
+  React.useEffect(() => {
+    const hasTrack = currentTrack != null;
+    if (hasTrack && !hadTrack.current && autoOpenPlayer) {
+      navigation.navigate('Player');
+    }
+    hadTrack.current = hasTrack;
+  }, [currentTrack, autoOpenPlayer, navigation]);
 
   if (!currentTrack) return null;
 
