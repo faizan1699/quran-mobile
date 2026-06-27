@@ -1,8 +1,13 @@
 import React, { useMemo } from 'react';
-import { StyleSheet, View, Text, TouchableOpacity, Share } from 'react-native';
+import { StyleSheet, View, Text, TouchableOpacity } from 'react-native';
+import { Ionicons as RawIonicons } from '@expo/vector-icons';
 import { useTranslation } from '@/i18n';
 import { useTheme, Theme } from '@/theme';
+import { useShareSheet } from '@/components/share/ShareProvider';
 import { colors, borderRadius, spacing, typography, shadows } from '@/tokens';
+
+type IconProps = { name: string; size?: number; color?: string };
+const Ionicons = RawIonicons as unknown as React.ComponentType<IconProps>;
 
 interface HadithItem {
   title: string;
@@ -26,19 +31,16 @@ export function HadithOfDayCard(): React.JSX.Element {
   const { t, language, isRTL } = useTranslation();
   const { theme } = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
+  const { share } = useShareSheet();
 
-  const handleShare = async () => {
-    const textToShare = language === 'ur'
-      ? `${MOCK_HADITH.titleUrdu}\n\n${MOCK_HADITH.excerptUrdu}\n\n— ${MOCK_HADITH.narratorUrdu}\n\n(Taleem ul Quran App)`
-      : `${MOCK_HADITH.title}\n\n${MOCK_HADITH.excerpt}\n\n— ${MOCK_HADITH.narrator}\n\n(Taleem ul Quran App)`;
-
-    try {
-      await Share.share({
-        message: textToShare,
-      });
-    } catch (error) {
-      console.error('Error sharing Hadith:', error);
-    }
+  const handleShare = () => {
+    share({
+      kind: 'hadith',
+      english: MOCK_HADITH.excerpt,
+      urdu: MOCK_HADITH.excerptUrdu,
+      reference: MOCK_HADITH.narrator,
+      referenceUrdu: MOCK_HADITH.narratorUrdu,
+    });
   };
 
   const title = language === 'ur' ? MOCK_HADITH.titleUrdu : MOCK_HADITH.title;
@@ -63,7 +65,11 @@ export function HadithOfDayCard(): React.JSX.Element {
           onPress={handleShare}
           activeOpacity={0.8}
         >
-          <Text style={styles.shareIcon}>🔗</Text>
+          <Ionicons
+            name="share-social-outline"
+            size={13}
+            color={theme.isDark ? colors.gold[400] : colors.primary[900]}
+          />
           <Text style={styles.shareText}>{t('home.share')}</Text>
         </TouchableOpacity>
       </View>
@@ -132,10 +138,6 @@ const createStyles = (theme: Theme) =>
       gap: 4,
       borderWidth: 1,
       borderColor: colors.gold[500],
-    },
-    shareIcon: {
-      fontSize: 12,
-      color: colors.gold[600],
     },
     shareText: {
       fontFamily: typography.fontFamily.english,

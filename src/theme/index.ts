@@ -96,7 +96,9 @@ export function useTheme(): {
   theme: Theme;
   mode: ThemeMode;
   isDark: boolean;
-  fontScale: FontScale;
+  arabicFontScale: FontScale;
+  urduFontScale: FontScale;
+  englishFontScale: FontScale;
   arabicFont: string;
   urduFont: string;
   englishFont: string;
@@ -118,7 +120,9 @@ export function useTheme(): {
   const setBackgroundColor = useThemeStore((s) => s.setBackgroundColor);
   const setGlass = useThemeStore((s) => s.setGlass);
   const resetAppearance = useThemeStore((s) => s.resetAppearance);
-  const fontScale = usePreferencesStore((s) => s.fontScale);
+  const arabicFontScale = usePreferencesStore((s) => s.arabicFontScale);
+  const urduFontScale = usePreferencesStore((s) => s.urduFontScale);
+  const englishFontScale = usePreferencesStore((s) => s.englishFontScale);
   const arabicFont = usePreferencesStore((s) => s.arabicFont);
   const urduFont = usePreferencesStore((s) => s.urduFont);
   const englishFont = usePreferencesStore((s) => s.englishFont);
@@ -150,7 +154,9 @@ export function useTheme(): {
     theme,
     mode,
     isDark: theme.isDark,
-    fontScale,
+    arabicFontScale,
+    urduFontScale,
+    englishFontScale,
     arabicFont,
     urduFont,
     englishFont,

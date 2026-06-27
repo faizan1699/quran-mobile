@@ -12,6 +12,7 @@ import {
   Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons as RawIonicons } from '@expo/vector-icons';
 import {
   useRoute,
   useNavigation,
@@ -27,6 +28,7 @@ import { BackButton } from '@/components/BackButton';
 import { AudioPlayerBar } from '@/components/AudioPlayerBar';
 import { PlayingWaves } from '@/components/PlayingWaves';
 import { AyahArabic } from '@/components/AyahArabic';
+import { useShareSheet } from '@/components/share/ShareProvider';
 import { useSurahAyahs, useTafseerSections } from '@/hooks/useQuran';
 import { getSurahMeta } from '@/data/surahMeta';
 import {
@@ -44,6 +46,9 @@ import { listNotesForSurah, Note } from '@/services/notesDb';
 import { NOTE_COLOR_HEX } from '@/data/noteColors';
 
 type QuranReaderRouteProp = RouteProp<RootStackParamList, 'QuranReader'>;
+
+type IconProps = { name: string; size?: number; color?: string };
+const Ionicons = RawIonicons as unknown as React.ComponentType<IconProps>;
 
 const BISMILLAH = 'بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ';
 
@@ -82,6 +87,8 @@ export default function QuranReaderScreen(): React.JSX.Element {
   const bookmarks = useQuranStore((s) => s.bookmarks);
   const toggleBookmark = useQuranStore((s) => s.toggleBookmark);
   const setLastRead = useQuranStore((s) => s.setLastRead);
+
+  const { share } = useShareSheet();
 
   const reciterId = usePreferencesStore((s) => s.reciterId);
   const setReciterId = usePreferencesStore((s) => s.setReciterId);
@@ -397,6 +404,30 @@ export default function QuranReaderScreen(): React.JSX.Element {
                           <Text style={styles.noteCountText}>{ayahNotes.length}</Text>
                         </View>
                       )}
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      style={styles.iconBtn}
+                      onPress={() =>
+                        share({
+                          kind: 'ayah',
+                          arabic: ayah.arabic,
+                          english: ayah.translation,
+                          urdu: ayah.urdu,
+                          reference: `${surahName} ${surahNumber}:${ayah.ayah}`,
+                          referenceUrdu: `${surahName} ${toArabicDigits(
+                            surahNumber
+                          )}:${toArabicDigits(ayah.ayah)}`,
+                        })
+                      }
+                      activeOpacity={0.7}
+                      accessibilityLabel={t('share.shareBtn')}
+                    >
+                      <Ionicons
+                        name="share-social-outline"
+                        size={18}
+                        color={theme.textGold}
+                      />
                     </TouchableOpacity>
 
                     <TouchableOpacity

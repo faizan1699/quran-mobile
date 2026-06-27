@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { StyleSheet, View, Text, TouchableOpacity } from 'react-native';
 import { useTranslation } from '@/i18n';
 import { useTheme, Theme } from '@/theme';
+import { ShareButton } from '@/components/share/ShareButton';
 import { colors, borderRadius, spacing, typography, shadows } from '@/tokens';
 
 interface AyahItem {
@@ -77,7 +78,18 @@ export function DailyAyahCard(): React.JSX.Element {
         </Text>
 
         {/* Carousel indicator dots */}
-        <View style={styles.dotsContainer}>
+        <View style={styles.footerRight}>
+          <ShareButton
+            content={{
+              kind: 'ayah',
+              arabic: currentAyah.arabic,
+              english: currentAyah.english,
+              urdu: currentAyah.urdu,
+              reference: currentAyah.reference,
+            }}
+            color={theme.textGold}
+          />
+          <View style={styles.dotsContainer}>
           {AYAHS_DATA.map((_, index) => (
             <TouchableOpacity
               key={index}
@@ -90,6 +102,7 @@ export function DailyAyahCard(): React.JSX.Element {
               accessibilityLabel={`View ayah ${index + 1}`}
             />
           ))}
+          </View>
         </View>
       </View>
     </View>
@@ -157,6 +170,11 @@ const createStyles = (theme: Theme) =>
       fontSize: typography.fontSize.xs,
       color: theme.textGold,
       fontWeight: typography.fontWeight.semibold,
+    },
+    footerRight: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing[3],
     },
     dotsContainer: {
       flexDirection: 'row',
