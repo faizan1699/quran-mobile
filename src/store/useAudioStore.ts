@@ -74,8 +74,17 @@ let player: AudioPlayer | null = null;
 let statusSub: StatusSub | null = null;
 let pendingSeekSeconds = 0;
 let audioModeReady = false;
+let audioModePromise: Promise<void> | null = null;
 let advancing = false;
 let prefetchTimer: ReturnType<typeof setTimeout> | null = null;
+let shouldBePlaying = false;
+let loadWatchdog: ReturnType<typeof setTimeout> | null = null;
+let loadRetries = 0;
+let lastTrack: AudioTrackInfo | null = null;
+let lastStartSeconds = 0;
+
+const LOAD_TIMEOUT_MS = 9000;
+const MAX_LOAD_RETRIES = 2;
 
 function fetchWebDurationSeconds(url: string): Promise<number> {
   return new Promise((resolve) => {
@@ -137,18 +146,22 @@ async function fetchDurationSeconds(url: string): Promise<number> {
 
 async function ensureAudioMode(): Promise<void> {
   if (audioModeReady) return;
-  audioModeReady = true;
-  try {
-    await setAudioModeAsync({
+  if (!audioModePromise) {
+    audioModePromise = setAudioModeAsync({
       allowsRecording: false,
       shouldPlayInBackground: true,
       playsInSilentMode: true,
       shouldRouteThroughEarpiece: false,
       interruptionMode: 'duckOthers',
-    });
-  } catch {
-    audioModeReady = false;
+    })
+      .then(() => {
+        audioModeReady = true;
+      })
+      .catch(() => {
+        audioModePromise = null;
+      });
   }
+  await audioModePromise;
 }
 
 const LAST_SURAH_NUMBER = 114;
@@ -227,7 +240,15 @@ export const useAudioStore = create<AudioState>((set, get) => {
     }, 1200);
   };
 
+  const clearLoadWatchdog = () => {
+    if (loadWatchdog) {
+      clearTimeout(loadWatchdog);
+      loadWatchdog = null;
+    }
+  };
+
   const teardownPlayer = () => {
+    clearLoadWatchdog();
     if (statusSub) {
       try {
         statusSub.remove();
@@ -282,6 +303,8 @@ export const useAudioStore = create<AudioState>((set, get) => {
       } else {
         const advanced = await maybeAutoAdvanceSurah();
         if (!advanced) {
+          shouldBePlaying = false;
+          clearLoadWatchdog();
           set({ playbackState: PlaybackState.Paused });
         }
       }
@@ -301,15 +324,26 @@ export const useAudioStore = create<AudioState>((set, get) => {
       void player.seekTo(seconds);
     }
 
+    if (status.playing) {
+      clearLoadWatchdog();
+      loadRetries = 0;
+    } else if (shouldBePlaying && player && !status.isBuffering && !status.didJustFinish) {
+      try {
+        player.play();
+      } catch {}
+    }
+
     const durationSeconds = status.duration || 0;
 
     set({
       position: status.currentTime,
       duration: durationSeconds,
-      playbackState: status.isBuffering
-        ? PlaybackState.Buffering
-        : status.playing
+      playbackState: status.playing
         ? PlaybackState.Playing
+        : status.isBuffering
+        ? PlaybackState.Buffering
+        : shouldBePlaying && !status.didJustFinish
+        ? PlaybackState.Buffering
         : PlaybackState.Paused,
     });
 
@@ -331,13 +365,32 @@ export const useAudioStore = create<AudioState>((set, get) => {
     } catch {}
   };
 
+  const armLoadWatchdog = (track: AudioTrackInfo, startSeconds: number) => {
+    clearLoadWatchdog();
+    loadWatchdog = setTimeout(() => {
+      loadWatchdog = null;
+      if (!shouldBePlaying) return;
+      if (player && get().playbackState === PlaybackState.Playing) return;
+      if (loadRetries < MAX_LOAD_RETRIES) {
+        loadRetries += 1;
+        startPlayback(track, startSeconds);
+      } else {
+        shouldBePlaying = false;
+        set({ playbackState: PlaybackState.Paused });
+      }
+    }, LOAD_TIMEOUT_MS);
+  };
+
   const startPlayback = (track: AudioTrackInfo, startSeconds: number) => {
     teardownPlayer();
+    lastTrack = track;
+    lastStartSeconds = startSeconds;
     pendingSeekSeconds = startSeconds > 0 ? startSeconds : 0;
     player = createAudioPlayer({ uri: track.url }, { updateInterval: 100 });
     statusSub = player.addListener('playbackStatusUpdate', onPlaybackStatusUpdate);
     applyRate(get().playbackRate);
     player.play();
+    armLoadWatchdog(track, startSeconds);
   };
 
   return {
@@ -353,6 +406,8 @@ export const useAudioStore = create<AudioState>((set, get) => {
 
     playTrack: async (track, startSeconds = 0) => {
       try {
+        shouldBePlaying = true;
+        loadRetries = 0;
         set({
           currentTrack: track,
           position: startSeconds,
@@ -362,7 +417,6 @@ export const useAudioStore = create<AudioState>((set, get) => {
 
         await ensureAudioMode();
         startPlayback(track, startSeconds);
-        set({ playbackState: PlaybackState.Playing });
       } catch (error) {
         console.error('Error playing track via expo-audio:', error);
       }
@@ -372,15 +426,21 @@ export const useAudioStore = create<AudioState>((set, get) => {
       try {
         const { currentTrack, playbackState } = get();
         if (!player) {
-          if (currentTrack) await get().playTrack(currentTrack);
+          if (currentTrack) await get().playTrack(currentTrack, get().position);
           return;
         }
         if (playbackState === PlaybackState.Playing) {
+          shouldBePlaying = false;
+          clearLoadWatchdog();
           player.pause();
           set({ playbackState: PlaybackState.Paused });
         } else {
+          shouldBePlaying = true;
+          loadRetries = 0;
+          await ensureAudioMode();
           player.play();
-          set({ playbackState: PlaybackState.Playing });
+          armLoadWatchdog(lastTrack ?? currentTrack!, get().position);
+          set({ playbackState: PlaybackState.Buffering });
         }
       } catch (error) {
         console.error('Error toggling playback:', error);
@@ -440,6 +500,9 @@ export const useAudioStore = create<AudioState>((set, get) => {
 
     resetPlayer: async () => {
       try {
+        shouldBePlaying = false;
+        loadRetries = 0;
+        lastTrack = null;
         if (prefetchTimer) {
           clearTimeout(prefetchTimer);
           prefetchTimer = null;
@@ -556,6 +619,11 @@ if (typeof module !== 'undefined' && module?.hot) {
       player?.pause();
       player?.remove();
     } catch {}
+    if (loadWatchdog) {
+      clearTimeout(loadWatchdog);
+      loadWatchdog = null;
+    }
+    shouldBePlaying = false;
     player = null;
     statusSub = null;
   });
