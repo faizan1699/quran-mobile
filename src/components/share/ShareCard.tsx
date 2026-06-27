@@ -1,7 +1,8 @@
 import React, { forwardRef } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { typography } from '@/tokens';
-import { readableText, withAlpha, mix } from '@/theme/colorUtils';
+import { readableText, withAlpha, mix, lighten, darken } from '@/theme/colorUtils';
+import type { ShareBorderStyle } from '@/data/sharePresets';
 
 interface ShareCardProps {
   width: number;
@@ -9,7 +10,7 @@ interface ShareCardProps {
   accent: string;
   radius: number;
   borderWidth: number;
-  borderStyle: 'solid' | 'dashed' | 'dotted';
+  borderStyle: ShareBorderStyle;
   fontArabic: number;
   fontTranslation: number;
   fontReference: number;
@@ -55,6 +56,39 @@ export const ShareCard = forwardRef<View, ShareCardProps>(function ShareCard(
   const hasUrdu = showUrdu && !!urdu;
   const hasTranslation = hasEnglish || hasUrdu;
 
+  const lightEdge = lighten(accent, 0.4);
+  const darkEdge = darken(accent, 0.4);
+  const hasBorder = borderWidth > 0;
+  const hasInnerLine = hasBorder && (borderStyle === 'double' || borderStyle === 'etch');
+  const innerGap = borderWidth + 3;
+  const innerWidth = borderStyle === 'double' ? borderWidth : Math.max(1, borderWidth - 1);
+
+  const borderProps = !hasBorder
+    ? { borderWidth: 0, borderColor: 'transparent' as const }
+    : borderStyle === 'bevel'
+      ? {
+          borderWidth,
+          borderTopColor: lightEdge,
+          borderLeftColor: lightEdge,
+          borderBottomColor: darkEdge,
+          borderRightColor: darkEdge,
+        }
+      : borderStyle === 'etch'
+        ? {
+            borderWidth,
+            borderTopColor: darkEdge,
+            borderLeftColor: darkEdge,
+            borderBottomColor: lightEdge,
+            borderRightColor: lightEdge,
+          }
+        : {
+            borderWidth,
+            borderColor: accent,
+            borderStyle: (borderStyle === 'dashed' || borderStyle === 'dotted'
+              ? borderStyle
+              : 'solid') as 'solid' | 'dashed' | 'dotted',
+          };
+
   return (
     <View
       ref={ref}
@@ -65,12 +99,35 @@ export const ShareCard = forwardRef<View, ShareCardProps>(function ShareCard(
           width,
           backgroundColor: bg,
           borderRadius: radius,
-          borderWidth,
-          borderColor: borderWidth > 0 ? accent : 'transparent',
-          borderStyle,
+          ...borderProps,
         },
       ]}
     >
+      {hasInnerLine ? (
+        <View
+          pointerEvents="none"
+          style={[
+            styles.innerLine,
+            {
+              top: innerGap,
+              left: innerGap,
+              right: innerGap,
+              bottom: innerGap,
+              borderRadius: Math.max(0, radius - innerGap),
+            },
+            borderStyle === 'double'
+              ? { borderWidth: innerWidth, borderColor: accent }
+              : {
+                  borderWidth: innerWidth,
+                  borderTopColor: lightEdge,
+                  borderLeftColor: lightEdge,
+                  borderBottomColor: darkEdge,
+                  borderRightColor: darkEdge,
+                },
+          ]}
+        />
+      ) : null}
+
       <View style={styles.tagRow}>
         <View style={[styles.tagDot, { backgroundColor: accent }]} />
         <Text style={[styles.tag, { color: accent }]} numberOfLines={1}>
@@ -160,6 +217,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 26,
     paddingVertical: 30,
     alignItems: 'center',
+  },
+  innerLine: {
+    position: 'absolute',
   },
   tagRow: {
     flexDirection: 'row',

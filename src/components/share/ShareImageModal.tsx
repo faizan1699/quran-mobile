@@ -21,7 +21,9 @@ import {
   SHARE_FONT_SIZES,
   SHARE_RADII,
   SHARE_BORDERS,
+  type ShareBorderOption,
 } from '@/data/sharePresets';
+import { withAlpha } from '@/theme/colorUtils';
 import { ShareContent } from '@/types/share';
 
 type IconProps = { name: string; size?: number; color?: string };
@@ -317,16 +319,7 @@ export function ShareImageModal({
                           />
                         </View>
                       ) : (
-                        <View
-                          style={[
-                            styles.borderGlyph,
-                            {
-                              borderWidth: Math.min(b.width, 3),
-                              borderStyle: b.style,
-                              borderColor: glyphColor,
-                            },
-                          ]}
-                        />
+                        <BorderGlyph option={b} color={glyphColor} styles={styles} />
                       )}
                       <Text
                         style={[
@@ -367,6 +360,63 @@ export function ShareImageModal({
         </View>
       </View>
     </Modal>
+  );
+}
+
+function BorderGlyph({
+  option,
+  color,
+  styles,
+}: {
+  option: ShareBorderOption;
+  color: string;
+  styles: ReturnType<typeof createStyles>;
+}): React.JSX.Element {
+  const width = Math.min(option.width, 3);
+  const faded = withAlpha(color, 0.35);
+
+  if (option.style === 'bevel' || option.style === 'etch') {
+    const raised = option.style === 'bevel';
+    return (
+      <View
+        style={[
+          styles.borderGlyph,
+          {
+            borderWidth: width,
+            borderTopColor: raised ? color : faded,
+            borderLeftColor: raised ? color : faded,
+            borderBottomColor: raised ? faded : color,
+            borderRightColor: raised ? faded : color,
+          },
+        ]}
+      />
+    );
+  }
+
+  if (option.style === 'double') {
+    return (
+      <View
+        style={[styles.borderGlyph, { borderWidth: 1, borderColor: color }]}
+      >
+        <View style={[styles.borderGlyphInner, { borderColor: color }]} />
+      </View>
+    );
+  }
+
+  return (
+    <View
+      style={[
+        styles.borderGlyph,
+        {
+          borderWidth: width,
+          borderStyle:
+            option.style === 'dashed' || option.style === 'dotted'
+              ? option.style
+              : 'solid',
+          borderColor: color,
+        },
+      ]}
+    />
   );
 }
 
@@ -575,6 +625,15 @@ const createStyles = (theme: Theme) =>
       width: 30,
       height: 20,
       borderRadius: 5,
+    },
+    borderGlyphInner: {
+      position: 'absolute',
+      top: 2,
+      left: 2,
+      right: 2,
+      bottom: 2,
+      borderWidth: 1,
+      borderRadius: 3,
     },
     borderNoneGlyph: {
       width: 30,

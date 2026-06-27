@@ -31,10 +31,18 @@ export const SHARE_FONT_SIZES: ShareFontSize[] = [
 
 export const SHARE_RADII: number[] = [0, 18, 30, 44];
 
+export type ShareBorderStyle =
+  | 'solid'
+  | 'dashed'
+  | 'dotted'
+  | 'double'
+  | 'bevel'
+  | 'etch';
+
 export interface ShareBorderOption {
-  id: 'none' | 'thin' | 'thick' | 'dashed' | 'dotted';
+  id: 'none' | 'thin' | 'thick' | 'dashed' | 'dotted' | 'double' | 'bevel' | 'etch';
   width: number;
-  style: 'solid' | 'dashed' | 'dotted';
+  style: ShareBorderStyle;
 }
 
 export const SHARE_BORDERS: ShareBorderOption[] = [
@@ -43,4 +51,7 @@ export const SHARE_BORDERS: ShareBorderOption[] = [
   { id: 'thick', width: 3.5, style: 'solid' },
   { id: 'dashed', width: 2, style: 'dashed' },
   { id: 'dotted', width: 2.5, style: 'dotted' },
+  { id: 'double', width: 3, style: 'double' },
+  { id: 'bevel', width: 4, style: 'bevel' },
+  { id: 'etch', width: 3, style: 'etch' },
 ];
