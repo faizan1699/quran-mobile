@@ -22,7 +22,7 @@ import {
   SHARE_RADII,
   SHARE_BORDERS,
 } from '@/data/sharePresets';
-import { ShareContent, ShareLang, ShareMode } from '@/types/share';
+import { ShareContent } from '@/types/share';
 
 type IconProps = { name: string; size?: number; color?: string };
 const Ionicons = RawIonicons as unknown as React.ComponentType<IconProps>;
@@ -49,10 +49,10 @@ export function ShareImageModal({
   const hasArabic = !!content?.arabic;
   const hasEnglish = !!content?.english;
   const hasUrdu = !!content?.urdu;
-  const hasTranslation = hasEnglish || hasUrdu;
 
-  const [mode, setMode] = useState<ShareMode>('both');
-  const [lang, setLang] = useState<ShareLang>(language);
+  const [selAr, setSelAr] = useState(true);
+  const [selEn, setSelEn] = useState(false);
+  const [selUr, setSelUr] = useState(false);
   const [bgIndex, setBgIndex] = useState(0);
   const [sizeIndex, setSizeIndex] = useState(1);
   const [radiusIndex, setRadiusIndex] = useState(1);
@@ -63,9 +63,11 @@ export function ShareImageModal({
     if (!visible) {
       return;
     }
-    setMode('both');
-    setLang(hasUrdu && (language === 'ur' || !hasEnglish) ? 'ur' : 'en');
-  }, [visible, hasUrdu, hasEnglish, language]);
+    const preferUrdu = hasUrdu && (language === 'ur' || !hasEnglish);
+    setSelAr(hasArabic);
+    setSelEn(hasEnglish && !preferUrdu);
+    setSelUr(hasUrdu && preferUrdu);
+  }, [visible, hasArabic, hasEnglish, hasUrdu, language]);
 
   if (!content) {
     return null;
@@ -76,17 +78,32 @@ export function ShareImageModal({
   const radius = SHARE_RADII[radiusIndex];
   const border = SHARE_BORDERS[borderIndex];
 
-  const showArabic = hasArabic && (mode === 'arabic' || mode === 'both');
-  const showTranslation = mode === 'both' && hasTranslation;
+  const showArabic = selAr && hasArabic;
+  const showEnglish = selEn && hasEnglish;
+  const showUrdu = selUr && hasUrdu;
 
-  const effectiveLang: ShareLang =
-    lang === 'ur' ? (hasUrdu ? 'ur' : 'en') : hasEnglish ? 'en' : 'ur';
-  const translationText =
-    effectiveLang === 'ur' ? content.urdu : content.english;
+  const toggleLang = (key: 'ar' | 'en' | 'ur') => {
+    const next = { ar: showArabic, en: showEnglish, ur: showUrdu };
+    next[key] = !next[key];
+    if (!next.ar && !next.en && !next.ur) {
+      return;
+    }
+    if (key === 'ar') {
+      setSelAr(next.ar);
+    } else if (key === 'en') {
+      setSelEn(next.en);
+    } else {
+      setSelUr(next.ur);
+    }
+  };
+
   const referenceText =
-    effectiveLang === 'ur'
+    showUrdu && !showEnglish
       ? content.referenceUrdu ?? content.reference
       : content.reference ?? content.referenceUrdu;
+
+  const availableCount =
+    (hasArabic ? 1 : 0) + (hasEnglish ? 1 : 0) + (hasUrdu ? 1 : 0);
 
   const cardWidth = Math.min(width - spacing[4] * 2, 360);
 
@@ -104,7 +121,8 @@ export function ShareImageModal({
     setSharing(true);
     const lines = [
       showArabic ? content.arabic : null,
-      showTranslation ? translationText : null,
+      showEnglish ? content.english : null,
+      showUrdu ? content.urdu : null,
       referenceText ? `— ${referenceText}` : null,
       `(${WATERMARK})`,
     ].filter(Boolean);
@@ -117,9 +135,6 @@ export function ShareImageModal({
       Alert.alert(t('share.failed'), t('share.failedBody'));
     }
   };
-
-  const showContentToggle = hasArabic && hasTranslation;
-  const showLangToggle = showTranslation && hasEnglish && hasUrdu;
 
   return (
     <Modal
@@ -142,10 +157,7 @@ export function ShareImageModal({
             </TouchableOpacity>
           </View>
 
-          <ScrollView
-            showsVerticalScrollIndicator={false}
-            contentContainerStyle={styles.scrollContent}
-          >
+          <View style={styles.previewWrap}>
             <View style={styles.previewArea}>
               <ShareCard
                 ref={cardRef}
@@ -160,49 +172,52 @@ export function ShareImageModal({
                 fontReference={size.reference}
                 categoryLabel={categoryLabel}
                 arabic={content.arabic}
-                translation={translationText}
-                translationLang={effectiveLang}
+                english={content.english}
+                urdu={content.urdu}
                 reference={referenceText}
                 showArabic={showArabic}
-                showTranslation={showTranslation}
+                showEnglish={showEnglish}
+                showUrdu={showUrdu}
                 watermark={WATERMARK}
               />
             </View>
+          </View>
 
-            {showContentToggle && (
+          <ScrollView
+            style={styles.scroll}
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={styles.scrollContent}
+          >
+            {availableCount > 1 && (
               <Section label={t('share.content')} styles={styles}>
                 <View style={styles.chipRow}>
-                  <TextChip
-                    label={t('share.arabicOnly')}
-                    active={mode === 'arabic'}
-                    onPress={() => setMode('arabic')}
-                    styles={styles}
-                  />
-                  <TextChip
-                    label={t('share.withTranslation')}
-                    active={mode === 'both'}
-                    onPress={() => setMode('both')}
-                    styles={styles}
-                  />
-                </View>
-              </Section>
-            )}
-
-            {showLangToggle && (
-              <Section label={t('share.language')} styles={styles}>
-                <View style={styles.chipRow}>
-                  <TextChip
-                    label={t('share.english')}
-                    active={effectiveLang === 'en'}
-                    onPress={() => setLang('en')}
-                    styles={styles}
-                  />
-                  <TextChip
-                    label={t('share.urdu')}
-                    active={effectiveLang === 'ur'}
-                    onPress={() => setLang('ur')}
-                    styles={styles}
-                  />
+                  {hasArabic && (
+                    <ToggleChip
+                      label={t('share.arabic')}
+                      active={showArabic}
+                      onPress={() => toggleLang('ar')}
+                      styles={styles}
+                      theme={theme}
+                    />
+                  )}
+                  {hasEnglish && (
+                    <ToggleChip
+                      label={t('share.english')}
+                      active={showEnglish}
+                      onPress={() => toggleLang('en')}
+                      styles={styles}
+                      theme={theme}
+                    />
+                  )}
+                  {hasUrdu && (
+                    <ToggleChip
+                      label={t('share.urdu')}
+                      active={showUrdu}
+                      onPress={() => toggleLang('ur')}
+                      styles={styles}
+                      theme={theme}
+                    />
+                  )}
                 </View>
               </Section>
             )}
@@ -280,41 +295,50 @@ export function ShareImageModal({
 
             <Section label={t('share.border')} styles={styles}>
               <View style={styles.chipRow}>
-                {SHARE_BORDERS.map((b, i) => (
-                  <TouchableOpacity
-                    key={b.id}
-                    onPress={() => setBorderIndex(i)}
-                    activeOpacity={0.8}
-                    style={[styles.iconChip, i === borderIndex && styles.iconChipActive]}
-                  >
-                    <View
-                      style={[
-                        styles.borderGlyph,
-                        {
-                          borderWidth: b.width || 0,
-                          borderStyle: b.style,
-                          borderColor:
-                            b.width === 0
-                              ? 'transparent'
-                              : i === borderIndex
-                              ? theme.textOnAccent
-                              : theme.textSecondary,
-                        },
-                      ]}
+                {SHARE_BORDERS.map((b, i) => {
+                  const active = i === borderIndex;
+                  const glyphColor = active
+                    ? theme.textOnAccent
+                    : theme.textSecondary;
+                  return (
+                    <TouchableOpacity
+                      key={b.id}
+                      onPress={() => setBorderIndex(i)}
+                      activeOpacity={0.8}
+                      style={[styles.borderChip, active && styles.iconChipActive]}
                     >
-                      {b.width === 0 && (
-                        <Text
+                      {b.width === 0 ? (
+                        <View style={styles.borderNoneGlyph}>
+                          <View
+                            style={[
+                              styles.borderNoneLine,
+                              { backgroundColor: glyphColor },
+                            ]}
+                          />
+                        </View>
+                      ) : (
+                        <View
                           style={[
-                            styles.borderNone,
-                            i === borderIndex && styles.iconChipTextActive,
+                            styles.borderGlyph,
+                            {
+                              borderWidth: Math.min(b.width, 3),
+                              borderStyle: b.style,
+                              borderColor: glyphColor,
+                            },
                           ]}
-                        >
-                          ∅
-                        </Text>
+                        />
                       )}
-                    </View>
-                  </TouchableOpacity>
-                ))}
+                      <Text
+                        style={[
+                          styles.borderChipLabel,
+                          active && styles.iconChipTextActive,
+                        ]}
+                      >
+                        {t(`share.border_${b.id}`)}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
               </View>
             </Section>
           </ScrollView>
@@ -363,16 +387,18 @@ function Section({
   );
 }
 
-function TextChip({
+function ToggleChip({
   label,
   active,
   onPress,
   styles,
+  theme,
 }: {
   label: string;
   active: boolean;
   onPress: () => void;
   styles: ReturnType<typeof createStyles>;
+  theme: Theme;
 }): React.JSX.Element {
   return (
     <TouchableOpacity
@@ -380,6 +406,11 @@ function TextChip({
       activeOpacity={0.8}
       style={[styles.textChip, active && styles.textChipActive]}
     >
+      <Ionicons
+        name={active ? 'checkmark-circle' : 'ellipse-outline'}
+        size={16}
+        color={active ? theme.textOnAccent : theme.textSecondary}
+      />
       <Text style={[styles.textChipLabel, active && styles.iconChipTextActive]}>
         {label}
       </Text>
@@ -419,9 +450,20 @@ const createStyles = (theme: Theme) =>
     closeBtn: {
       padding: spacing[1],
     },
+    scroll: {
+      flexShrink: 1,
+      flexGrow: 0,
+    },
     scrollContent: {
       paddingHorizontal: spacing[5],
       paddingTop: spacing[4],
+      paddingBottom: spacing[4],
+    },
+    previewWrap: {
+      paddingHorizontal: spacing[5],
+      paddingTop: spacing[4],
+      borderBottomWidth: 1,
+      borderBottomColor: theme.borderDivider,
       paddingBottom: spacing[4],
     },
     previewArea: {
@@ -430,7 +472,6 @@ const createStyles = (theme: Theme) =>
       backgroundColor: theme.bgMuted,
       borderRadius: borderRadius.xl,
       paddingVertical: spacing[6],
-      marginBottom: spacing[5],
     },
     section: {
       marginBottom: spacing[5],
@@ -450,6 +491,9 @@ const createStyles = (theme: Theme) =>
       gap: spacing[2],
     },
     textChip: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing[2],
       paddingHorizontal: spacing[4],
       paddingVertical: spacing[2],
       borderRadius: borderRadius.full,
@@ -514,15 +558,40 @@ const createStyles = (theme: Theme) =>
       borderTopWidth: 2.5,
       borderLeftWidth: 2.5,
     },
+    borderChip: {
+      minWidth: 64,
+      paddingHorizontal: spacing[2],
+      paddingTop: spacing[2],
+      paddingBottom: spacing[2],
+      borderRadius: borderRadius.lg,
+      backgroundColor: theme.bgMuted,
+      borderWidth: 1,
+      borderColor: theme.border,
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: spacing[1],
+    },
     borderGlyph: {
-      width: 24,
-      height: 18,
-      borderRadius: 3,
+      width: 30,
+      height: 20,
+      borderRadius: 5,
+    },
+    borderNoneGlyph: {
+      width: 30,
+      height: 20,
       alignItems: 'center',
       justifyContent: 'center',
     },
-    borderNone: {
-      fontSize: 14,
+    borderNoneLine: {
+      width: 22,
+      height: 2,
+      borderRadius: 1,
+      transform: [{ rotate: '-45deg' }],
+    },
+    borderChipLabel: {
+      fontFamily: typography.fontFamily.english,
+      fontSize: typography.fontSize.xs,
+      fontWeight: typography.fontWeight.semibold,
       color: theme.textSecondary,
     },
     footer: {

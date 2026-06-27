@@ -2,7 +2,6 @@ import React, { forwardRef } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { typography } from '@/tokens';
 import { readableText, withAlpha, mix } from '@/theme/colorUtils';
-import { ShareLang } from '@/types/share';
 
 interface ShareCardProps {
   width: number;
@@ -10,17 +9,18 @@ interface ShareCardProps {
   accent: string;
   radius: number;
   borderWidth: number;
-  borderStyle: 'solid' | 'dashed';
+  borderStyle: 'solid' | 'dashed' | 'dotted';
   fontArabic: number;
   fontTranslation: number;
   fontReference: number;
   categoryLabel: string;
   arabic?: string | null;
-  translation?: string | null;
-  translationLang?: ShareLang;
+  english?: string | null;
+  urdu?: string | null;
   reference?: string | null;
   showArabic: boolean;
-  showTranslation: boolean;
+  showEnglish: boolean;
+  showUrdu: boolean;
   watermark: string;
 }
 
@@ -37,11 +37,12 @@ export const ShareCard = forwardRef<View, ShareCardProps>(function ShareCard(
     fontReference,
     categoryLabel,
     arabic,
-    translation,
-    translationLang = 'en',
+    english,
+    urdu,
     reference,
     showArabic,
-    showTranslation,
+    showEnglish,
+    showUrdu,
     watermark,
   },
   ref
@@ -49,9 +50,10 @@ export const ShareCard = forwardRef<View, ShareCardProps>(function ShareCard(
   const textColor = readableText(bg);
   const mutedColor = mix(textColor, bg, 0.45);
   const dividerColor = withAlpha(accent, 0.4);
-  const isUrdu = translationLang === 'ur';
   const hasArabic = showArabic && !!arabic;
-  const hasTranslation = showTranslation && !!translation;
+  const hasEnglish = showEnglish && !!english;
+  const hasUrdu = showUrdu && !!urdu;
+  const hasTranslation = hasEnglish || hasUrdu;
 
   return (
     <View
@@ -96,26 +98,41 @@ export const ShareCard = forwardRef<View, ShareCardProps>(function ShareCard(
         <View style={[styles.divider, { backgroundColor: dividerColor }]} />
       )}
 
-      {hasTranslation && (
+      {hasEnglish && (
         <Text
           style={[
             styles.translation,
             {
               color: textColor,
               fontSize: fontTranslation,
-              fontFamily: isUrdu
-                ? typography.fontFamily.urdu
-                : typography.fontFamily.english,
-              lineHeight:
-                fontTranslation *
-                (isUrdu
-                  ? typography.lineHeight.urdu
-                  : typography.lineHeight.normal),
-              writingDirection: isUrdu ? 'rtl' : 'ltr',
+              fontFamily: typography.fontFamily.english,
+              lineHeight: fontTranslation * typography.lineHeight.normal,
+              writingDirection: 'ltr',
             },
           ]}
         >
-          {translation}
+          {english}
+        </Text>
+      )}
+
+      {hasEnglish && hasUrdu && (
+        <View style={[styles.subDivider, { backgroundColor: dividerColor }]} />
+      )}
+
+      {hasUrdu && (
+        <Text
+          style={[
+            styles.translation,
+            {
+              color: textColor,
+              fontSize: fontTranslation,
+              fontFamily: typography.fontFamily.urdu,
+              lineHeight: fontTranslation * typography.lineHeight.urdu,
+              writingDirection: 'rtl',
+            },
+          ]}
+        >
+          {urdu}
         </Text>
       )}
 
@@ -172,6 +189,13 @@ const styles = StyleSheet.create({
     height: 1.5,
     borderRadius: 1,
     marginVertical: 18,
+  },
+  subDivider: {
+    width: 32,
+    height: 1,
+    borderRadius: 1,
+    marginVertical: 14,
+    opacity: 0.7,
   },
   translation: {
     textAlign: 'center',

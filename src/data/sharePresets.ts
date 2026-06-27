@@ -32,14 +32,15 @@ export const SHARE_FONT_SIZES: ShareFontSize[] = [
 export const SHARE_RADII: number[] = [0, 18, 30, 44];
 
 export interface ShareBorderOption {
-  id: 'none' | 'thin' | 'thick' | 'dashed';
+  id: 'none' | 'thin' | 'thick' | 'dashed' | 'dotted';
   width: number;
-  style: 'solid' | 'dashed';
+  style: 'solid' | 'dashed' | 'dotted';
 }
 
 export const SHARE_BORDERS: ShareBorderOption[] = [
   { id: 'none', width: 0, style: 'solid' },
   { id: 'thin', width: 1.5, style: 'solid' },
-  { id: 'thick', width: 3, style: 'solid' },
+  { id: 'thick', width: 3.5, style: 'solid' },
   { id: 'dashed', width: 2, style: 'dashed' },
+  { id: 'dotted', width: 2.5, style: 'dotted' },
 ];

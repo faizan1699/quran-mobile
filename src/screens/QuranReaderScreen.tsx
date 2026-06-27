@@ -12,6 +12,7 @@ import {
   Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons as RawIonicons } from '@expo/vector-icons';
 import {
   useRoute,
   useNavigation,
@@ -45,6 +46,9 @@ import { listNotesForSurah, Note } from '@/services/notesDb';
 import { NOTE_COLOR_HEX } from '@/data/noteColors';
 
 type QuranReaderRouteProp = RouteProp<RootStackParamList, 'QuranReader'>;
+
+type IconProps = { name: string; size?: number; color?: string };
+const Ionicons = RawIonicons as unknown as React.ComponentType<IconProps>;
 
 const BISMILLAH = 'بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ';
 
@@ -419,7 +423,11 @@ export default function QuranReaderScreen(): React.JSX.Element {
                       activeOpacity={0.7}
                       accessibilityLabel={t('share.shareBtn')}
                     >
-                      <Text style={styles.bookmarkIcon}>📤</Text>
+                      <Ionicons
+                        name="share-social-outline"
+                        size={18}
+                        color={theme.textGold}
+                      />
                     </TouchableOpacity>
 
                     <TouchableOpacity

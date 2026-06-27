@@ -376,3 +376,24 @@ export interface Flash {
   createdAt: string;
   updatedAt: string;
 }
+
+export type PopupFrequency = 'ONCE' | 'DAILY' | 'EVERY_LAUNCH' | 'INTERVAL';
+
+export interface Popup {
+  id: string;
+  title: string | null;
+  body: string | null;
+  imageUrl: string | null;
+  ctaLabel: string | null;
+  ctaUrl: string | null;
+  startsAt: string | null;
+  endsAt: string | null;
+  frequency: PopupFrequency;
+  intervalHours: number | null;
+  maxShows: number;
+  dismissible: boolean;
+  sortOrder: number;
+  active: boolean;
+  createdAt: string;
+  updatedAt: string;
+}

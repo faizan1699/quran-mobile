@@ -7,6 +7,7 @@ import { useTheme, Theme } from '@/theme';
 import { GlobalHeader } from '@/components/GlobalHeader';
 import { FlashesCarousel } from '@/components/FlashesCarousel';
 import { FlashBannerCarousel } from '@/components/FlashBannerCarousel';
+import { PopupModal } from '@/components/PopupModal';
 import { FadeInView } from '@/components/FadeInView';
 import { HeroDateBar } from '@/components/HeroDateBar';
 import { HomeFeatureTabs } from '@/components/HomeFeatureTabs';
@@ -131,6 +132,8 @@ export default function HomeScreen(): React.JSX.Element {
           </ScrollView>
         </FadeInView>
       </ScrollView>
+
+      <PopupModal />
     </SafeAreaView>
   );
 }
