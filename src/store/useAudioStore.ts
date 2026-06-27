@@ -6,7 +6,17 @@ import {
   AudioPlayer,
   AudioStatus,
 } from 'expo-audio';
-import { TimedWord } from '@shared-types';
+import { TimedWord, QuranAyah } from '@shared-types';
+import { quranService } from '@/services/quranService';
+import {
+  getReciter,
+  ayahAudioUrl,
+  translationAudioUrl,
+  translationReciterFor,
+} from '@/data/reciters';
+import { getSurahMeta } from '@/data/surahMeta';
+import { usePreferencesStore } from '@/store/usePreferencesStore';
+import { useUserStore } from '@/store/useUserStore';
 
 export enum PlaybackState {
   None = 'none',
@@ -141,6 +151,52 @@ async function ensureAudioMode(): Promise<void> {
   }
 }
 
+const LAST_SURAH_NUMBER = 114;
+
+async function buildSurahTracks(surahNumber: number): Promise<AudioTrackInfo[]> {
+  const ayahs = await quranService.getSurahAyahs(surahNumber);
+  if (!ayahs || ayahs.length === 0) {
+    return [];
+  }
+
+  const reciter = getReciter(usePreferencesStore.getState().reciterId);
+  const playTranslation = usePreferencesStore.getState().playTranslation;
+  const language = useUserStore.getState().language;
+  const meta = getSurahMeta(surahNumber);
+  const surahName = meta?.englishName ?? `Surah ${surahNumber}`;
+  const translationLabel = language === 'ur' ? 'ترجمہ' : 'Translation';
+  const translationTextFor = (a: QuranAyah) => (language === 'ur' ? a.urdu : a.translation);
+
+  const tracks: AudioTrackInfo[] = [];
+  for (const a of ayahs) {
+    tracks.push({
+      id: a.id,
+      url: ayahAudioUrl(reciter, surahNumber, a.ayah),
+      title: `${surahName} ${surahNumber}:${a.ayah}`,
+      artist: reciter.name,
+      arabic: a.arabic,
+      translation: translationTextFor(a) ?? undefined,
+      subtitle: `${surahName} • ${surahNumber}:${a.ayah}`,
+      surahNumber,
+    });
+
+    if (playTranslation && translationTextFor(a)) {
+      tracks.push({
+        id: `${a.id}::${language}`,
+        url: translationAudioUrl(surahNumber, a.ayah, language),
+        title: `${surahName} ${surahNumber}:${a.ayah} — ${translationLabel}`,
+        artist: translationReciterFor(language).name,
+        arabic: a.arabic,
+        translation: translationTextFor(a) ?? undefined,
+        subtitle: `${surahName} • ${surahNumber}:${a.ayah} • ${translationLabel}`,
+        surahNumber,
+      });
+    }
+  }
+
+  return tracks;
+}
+
 export const useAudioStore = create<AudioState>((set, get) => {
 
   const prefetchDurations = async (tracks: AudioTrackInfo[]) => {
@@ -189,6 +245,27 @@ export const useAudioStore = create<AudioState>((set, get) => {
     }
   };
 
+  const maybeAutoAdvanceSurah = async (): Promise<boolean> => {
+    if (!usePreferencesStore.getState().autoPlayNextSurah) {
+      return false;
+    }
+    const finished = get().currentTrack?.surahNumber;
+    if (!finished || finished >= LAST_SURAH_NUMBER) {
+      return false;
+    }
+    try {
+      const tracks = await buildSurahTracks(finished + 1);
+      if (tracks.length === 0) {
+        return false;
+      }
+      await get().playTrack(tracks[0]);
+      await get().setQueue(tracks);
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
   const handleTrackFinished = async () => {
     if (advancing) return;
     advancing = true;
@@ -203,7 +280,10 @@ export const useAudioStore = create<AudioState>((set, get) => {
       if (idx >= 0 && idx < queue.length - 1) {
         await get().skipToNext();
       } else {
-        set({ playbackState: PlaybackState.Paused });
+        const advanced = await maybeAutoAdvanceSurah();
+        if (!advanced) {
+          set({ playbackState: PlaybackState.Paused });
+        }
       }
     } finally {
       advancing = false;

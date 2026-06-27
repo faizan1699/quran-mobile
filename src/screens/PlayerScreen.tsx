@@ -18,6 +18,7 @@ import {
   usePlaybackTimeline,
   PLAYBACK_RATES,
 } from '@/store/useAudioStore';
+import { usePreferencesStore } from '@/store/usePreferencesStore';
 import { AyahArabic } from '@/components/AyahArabic';
 import { Icon } from '@/components/Icon';
 import { useTheme, Theme } from '@/theme';
@@ -52,6 +53,9 @@ export default function PlayerScreen(): React.JSX.Element | null {
   const resetPlayer = useAudioStore((s) => s.resetPlayer);
   const playbackRate = useAudioStore((s) => s.playbackRate);
   const setPlaybackRate = useAudioStore((s) => s.setPlaybackRate);
+
+  const autoPlayNextSurah = usePreferencesStore((s) => s.autoPlayNextSurah);
+  const setPref = usePreferencesStore((s) => s.setPref);
 
   const timeline = usePlaybackTimeline();
 
@@ -246,6 +250,23 @@ export default function PlayerScreen(): React.JSX.Element | null {
               style={[styles.speedText, playbackRate !== 1 && styles.speedTextActive]}
             >
               {playbackRate}×
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.autoNextRow}>
+          <Text style={styles.speedLabel}>
+            {isUrdu ? 'اگلی سورت خودکار چلائیں' : 'Auto-play next surah'}
+          </Text>
+          <TouchableOpacity
+            style={[styles.speedPill, autoPlayNextSurah && styles.speedPillActive]}
+            onPress={() => setPref('autoPlayNextSurah', !autoPlayNextSurah)}
+            activeOpacity={0.8}
+          >
+            <Text
+              style={[styles.speedText, autoPlayNextSurah && styles.speedTextActive]}
+            >
+              {autoPlayNextSurah ? (isUrdu ? 'آن' : 'On') : (isUrdu ? 'آف' : 'Off')}
             </Text>
           </TouchableOpacity>
         </View>
@@ -483,6 +504,13 @@ const createStyles = (theme: Theme) =>
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',
+      gap: spacing[2],
+      marginTop: spacing[3],
+    },
+    autoNextRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
       gap: spacing[2],
       marginTop: spacing[3],
     },

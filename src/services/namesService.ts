@@ -1,5 +1,5 @@
 import { apiClient } from './apiClient';
-import { cached } from './offlineCache';
+import { cachedRevalidate } from './offlineCache';
 
 export interface DivineName {
   id: string;
@@ -14,9 +14,24 @@ async function unwrap<T>(promise: Promise<unknown>): Promise<T> {
   return (await promise) as unknown as T;
 }
 
+export function filterNames(names: DivineName[], query: string): DivineName[] {
+  const q = query.trim().toLowerCase();
+  if (!q) {
+    return names;
+  }
+  return names.filter(
+    (name) =>
+      name.transliteration.toLowerCase().includes(q) ||
+      name.meaningEn.toLowerCase().includes(q) ||
+      name.meaningUr.includes(query.trim()) ||
+      name.arabic.includes(query.trim()) ||
+      String(name.number) === q
+  );
+}
+
 export const namesService = {
   async getNames(): Promise<DivineName[]> {
-    return cached('names:all', async () => {
+    return cachedRevalidate('names:all', async () => {
       try {
         const names = await unwrap<DivineName[]>(apiClient.get('/names'));
         return Array.isArray(names) ? names : [];
@@ -27,17 +42,7 @@ export const namesService = {
   },
 
   async searchNames(query: string): Promise<DivineName[]> {
-    const q = query.trim();
-    if (!q) {
-      return this.getNames();
-    }
-    try {
-      const names = await unwrap<DivineName[]>(
-        apiClient.get('/names/search', { params: { q } })
-      );
-      return Array.isArray(names) ? names : [];
-    } catch {
-      return [];
-    }
+    const all = await this.getNames();
+    return filterNames(all, query);
   },
 };

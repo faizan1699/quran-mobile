@@ -9,6 +9,7 @@ import {
   Modal,
   Pressable,
   LayoutChangeEvent,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRoute, useNavigation, RouteProp } from '@react-navigation/native';
@@ -167,14 +168,22 @@ export default function QuranReaderScreen(): React.JSX.Element {
       ayahNumber: ayah.ayah,
     });
 
+  const openFullPlayer = () => {
+    if (Platform.OS !== 'web') {
+      navigation.navigate('Player');
+    }
+  };
+
   const playAyah = async (ayah: QuranAyah) => {
     markRead(ayah);
+    openFullPlayer();
     await playTrack(buildTrack(ayah));
     await setQueue(tracks);
   };
 
   const playSurah = async () => {
     if (tracks.length === 0) return;
+    openFullPlayer();
     await playTrack(tracks[0]);
     await setQueue(tracks);
   };

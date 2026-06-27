@@ -34,6 +34,7 @@ interface PreferencesState {
   jummahReminder: boolean;
   // Reading & audio
   autoPlayNextAyah: boolean;
+  autoPlayNextSurah: boolean;
   keepScreenOn: boolean;
   playTranslation: boolean;
   highlightWords: boolean;
@@ -55,6 +56,7 @@ interface PreferencesState {
       | 'dailyAyahReminder'
       | 'jummahReminder'
       | 'autoPlayNextAyah'
+      | 'autoPlayNextSurah'
       | 'keepScreenOn'
       | 'playTranslation'
       | 'highlightWords'
@@ -76,6 +78,7 @@ export const usePreferencesStore = create<PreferencesState>()(
       dailyAyahReminder: true,
       jummahReminder: true,
       autoPlayNextAyah: true,
+      autoPlayNextSurah: true,
       keepScreenOn: false,
       playTranslation: false,
       highlightWords: false,
