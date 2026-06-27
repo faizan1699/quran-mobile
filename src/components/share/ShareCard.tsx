@@ -62,9 +62,12 @@ export const ShareCard = forwardRef<View, ShareCardProps>(function ShareCard(
   const lightEdge = lighten(accent, 0.4);
   const darkEdge = darken(accent, 0.4);
   const hasBorder = borderWidth > 0;
-  const hasInnerLine = hasBorder && (borderStyle === 'double' || borderStyle === 'etch');
-  const innerGap = borderWidth + 3;
+  const isFrame = borderStyle === 'frame';
+  const isOrnate = borderStyle === 'ornate';
+  const hasInnerLine = hasBorder && (borderStyle === 'double' || borderStyle === 'etch' || isFrame);
+  const innerGap = isFrame ? borderWidth + 7 : borderWidth + 3;
   const innerWidth = borderStyle === 'double' ? borderWidth : Math.max(1, borderWidth - 1);
+  const ornamentInset = Math.max(borderWidth + 5, radius * 0.6);
 
   const borderProps = !hasBorder
     ? { borderWidth: 0, borderColor: 'transparent' as const }
@@ -123,7 +126,7 @@ export const ShareCard = forwardRef<View, ShareCardProps>(function ShareCard(
               bottom: innerGap,
               borderRadius: Math.max(0, radius - innerGap),
             },
-            borderStyle === 'double'
+            borderStyle === 'double' || isFrame
               ? { borderWidth: innerWidth, borderColor: accent }
               : {
                   borderWidth: innerWidth,
@@ -135,6 +138,21 @@ export const ShareCard = forwardRef<View, ShareCardProps>(function ShareCard(
           ]}
         />
       ) : null}
+
+      {isOrnate && hasBorder
+        ? [
+            { top: ornamentInset, left: ornamentInset },
+            { top: ornamentInset, right: ornamentInset },
+            { bottom: ornamentInset, left: ornamentInset },
+            { bottom: ornamentInset, right: ornamentInset },
+          ].map((pos, idx) => (
+            <View
+              key={`orn-${idx}`}
+              pointerEvents="none"
+              style={[styles.cornerOrnament, pos, { borderColor: accent }]}
+            />
+          ))
+        : null}
 
       <View style={styles.tagRow}>
         <View style={[styles.tagDot, { backgroundColor: accent }]} />
@@ -228,6 +246,13 @@ const styles = StyleSheet.create({
   },
   innerLine: {
     position: 'absolute',
+  },
+  cornerOrnament: {
+    position: 'absolute',
+    width: 9,
+    height: 9,
+    borderWidth: 1.5,
+    transform: [{ rotate: '45deg' }],
   },
   tagRow: {
     flexDirection: 'row',

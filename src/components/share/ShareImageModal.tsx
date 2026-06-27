@@ -407,12 +407,30 @@ function BorderGlyph({
     );
   }
 
-  if (option.style === 'double') {
+  if (option.style === 'double' || option.style === 'frame') {
     return (
       <View
         style={[styles.borderGlyph, { borderWidth: 1, borderColor: color }]}
       >
         <View style={[styles.borderGlyphInner, { borderColor: color }]} />
+      </View>
+    );
+  }
+
+  if (option.style === 'ornate') {
+    return (
+      <View style={[styles.borderGlyph, { borderWidth: 1, borderColor: color }]}>
+        {[
+          { top: -3, left: -3 },
+          { top: -3, right: -3 },
+          { bottom: -3, left: -3 },
+          { bottom: -3, right: -3 },
+        ].map((pos, idx) => (
+          <View
+            key={idx}
+            style={[styles.borderGlyphOrn, pos, { borderColor: color }]}
+          />
+        ))}
       </View>
     );
   }
@@ -651,6 +669,13 @@ const createStyles = (theme: Theme) =>
       bottom: 2,
       borderWidth: 1,
       borderRadius: 3,
+    },
+    borderGlyphOrn: {
+      position: 'absolute',
+      width: 6,
+      height: 6,
+      borderWidth: 1,
+      transform: [{ rotate: '45deg' }],
     },
     borderNoneGlyph: {
       width: 30,

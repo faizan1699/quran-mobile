@@ -17,6 +17,11 @@ const TILE: Record<Exclude<SharePatternId, 'none'>, number> = {
   diamonds: 48,
   lattice: 42,
   dots: 30,
+  rings: 40,
+  crosshatch: 34,
+  quatrefoil: 46,
+  chevron: 36,
+  trellis: 40,
 };
 
 export function IslamicPattern({
@@ -114,6 +119,104 @@ function Motif({
             width: tile,
             height: tile,
             borderWidth: Math.max(1, tile * 0.022),
+            borderColor: color,
+            transform: [{ rotate: '45deg' }],
+          }}
+        />
+      </View>
+    );
+  }
+
+  if (variant === 'rings') {
+    const s = tile * 0.5;
+    return (
+      <View style={cell}>
+        <View
+          style={{
+            width: s,
+            height: s,
+            borderWidth: Math.max(1, tile * 0.03),
+            borderColor: color,
+            borderRadius: s / 2,
+          }}
+        />
+      </View>
+    );
+  }
+
+  if (variant === 'crosshatch') {
+    const arm = tile * 0.5;
+    const thickness = Math.max(1, tile * 0.04);
+    const bar: ViewStyle = {
+      position: 'absolute',
+      backgroundColor: color,
+      borderRadius: thickness / 2,
+    };
+    return (
+      <View style={cell}>
+        <View style={[bar, { width: arm, height: thickness }]} />
+        <View style={[bar, { width: thickness, height: arm }]} />
+      </View>
+    );
+  }
+
+  if (variant === 'quatrefoil') {
+    const r = tile * 0.42;
+    const off = tile * 0.19;
+    const stroke = Math.max(1, tile * 0.025);
+    const petal = (transform: ViewStyle['transform']): ViewStyle => ({
+      position: 'absolute',
+      width: r,
+      height: r,
+      borderRadius: r / 2,
+      borderWidth: stroke,
+      borderColor: color,
+      transform,
+    });
+    return (
+      <View style={cell}>
+        <View style={petal([{ translateY: -off }])} />
+        <View style={petal([{ translateY: off }])} />
+        <View style={petal([{ translateX: -off }])} />
+        <View style={petal([{ translateX: off }])} />
+      </View>
+    );
+  }
+
+  if (variant === 'chevron') {
+    const arm = tile * 0.6;
+    const thickness = Math.max(1, tile * 0.06);
+    const bar: ViewStyle = {
+      position: 'absolute',
+      width: arm,
+      height: thickness,
+      backgroundColor: color,
+      borderRadius: thickness / 2,
+    };
+    return (
+      <View style={cell}>
+        <View style={[bar, { transform: [{ translateX: -arm * 0.32 }, { rotate: '40deg' }] }]} />
+        <View style={[bar, { transform: [{ translateX: arm * 0.32 }, { rotate: '-40deg' }] }]} />
+      </View>
+    );
+  }
+
+  if (variant === 'trellis') {
+    const thickness = Math.max(1, tile * 0.05);
+    const knot = tile * 0.34;
+    return (
+      <View style={cell}>
+        <View
+          style={{ position: 'absolute', width: tile, height: thickness, backgroundColor: color }}
+        />
+        <View
+          style={{ position: 'absolute', width: thickness, height: tile, backgroundColor: color }}
+        />
+        <View
+          style={{
+            width: knot,
+            height: knot,
+            borderWidth: thickness,
             borderColor: color,
             transform: [{ rotate: '45deg' }],
           }}
