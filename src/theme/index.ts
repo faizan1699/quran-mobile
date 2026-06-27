@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Appearance, ColorSchemeName } from 'react-native';
 import { useThemeStore } from './useThemeStore';
+import { usePreferencesStore, FontScale } from '@/store/usePreferencesStore';
 import { lightTheme, darkTheme, Theme, ThemeMode } from './themes';
 import {
   darken,
@@ -95,6 +96,7 @@ export function useTheme(): {
   theme: Theme;
   mode: ThemeMode;
   isDark: boolean;
+  fontScale: FontScale;
   accentColor: string | null;
   backgroundColor: string | null;
   glass: boolean;
@@ -113,6 +115,7 @@ export function useTheme(): {
   const setBackgroundColor = useThemeStore((s) => s.setBackgroundColor);
   const setGlass = useThemeStore((s) => s.setGlass);
   const resetAppearance = useThemeStore((s) => s.resetAppearance);
+  const fontScale = usePreferencesStore((s) => s.fontScale);
 
   const [systemScheme, setSystemScheme] = useState<ColorSchemeName>(
     Appearance.getColorScheme()
@@ -141,6 +144,7 @@ export function useTheme(): {
     theme,
     mode,
     isDark: theme.isDark,
+    fontScale,
     accentColor,
     backgroundColor,
     glass,

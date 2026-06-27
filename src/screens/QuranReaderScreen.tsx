@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   StyleSheet,
   View,
@@ -8,15 +8,17 @@ import {
   ActivityIndicator,
   Modal,
   Pressable,
+  LayoutChangeEvent,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRoute, useNavigation, RouteProp } from '@react-navigation/native';
 import { useTranslation } from '@/i18n';
-import { useAudioStore } from '@/store/useAudioStore';
+import { useAudioStore, State } from '@/store/useAudioStore';
 import { useQuranStore } from '@/store/useQuranStore';
 import { usePreferencesStore } from '@/store/usePreferencesStore';
 import { GlobalHeader } from '@/components/GlobalHeader';
 import { AudioPlayerBar } from '@/components/AudioPlayerBar';
+import { PlayingWaves } from '@/components/PlayingWaves';
 import { AyahArabic } from '@/components/AyahArabic';
 import { useSurahAyahs, useTafseerSections } from '@/hooks/useQuran';
 import { getSurahMeta } from '@/data/surahMeta';
@@ -64,6 +66,9 @@ export default function QuranReaderScreen(): React.JSX.Element {
 
   const playTrack = useAudioStore((s) => s.playTrack);
   const setQueue = useAudioStore((s) => s.setQueue);
+  const togglePlay = useAudioStore((s) => s.togglePlay);
+  const currentTrack = useAudioStore((s) => s.currentTrack);
+  const playbackState = useAudioStore((s) => s.playbackState);
 
   const bookmarks = useQuranStore((s) => s.bookmarks);
   const toggleBookmark = useQuranStore((s) => s.toggleBookmark);
@@ -81,6 +86,19 @@ export default function QuranReaderScreen(): React.JSX.Element {
   const [reciterModalOpen, setReciterModalOpen] = useState(false);
   const [readMode, setReadMode] = useState(false);
 
+  const scrollRef = useRef<ScrollView | null>(null);
+  const ayahOffsets = useRef<Record<string, number>>({});
+
+  useEffect(() => {
+    const id = currentTrack?.id;
+    if (!id) return;
+    const baseId = id.includes('::') ? id.slice(0, id.indexOf('::')) : id;
+    const y = ayahOffsets.current[baseId];
+    if (y != null) {
+      scrollRef.current?.scrollTo({ y: Math.max(0, y - 12), animated: true });
+    }
+  }, [currentTrack?.id]);
+
   const toggleTafseer = (id: string) =>
     setOpenTafseer((prev) => ({ ...prev, [id]: !prev[id] }));
 
@@ -89,16 +107,31 @@ export default function QuranReaderScreen(): React.JSX.Element {
     url: ayahAudioUrl(reciter, surahNumber, a.ayah),
     title: `${surahName} ${surahNumber}:${a.ayah}`,
     artist: reciter.name,
+    arabic: a.arabic,
+    translation: translationTextFor(a) ?? undefined,
+    subtitle: `${surahName} • ${surahNumber}:${a.ayah}`,
+    surahNumber,
   });
 
   const buildTranslationTrack = (a: QuranAyah) => ({
     id: `${a.id}::${language}`,
     url: translationAudioUrl(surahNumber, a.ayah, language),
-    title: `${surahName} ${surahNumber}:${a.ayah} — ${
-      language === 'ur' ? 'ترجمہ' : 'Translation'
-    }`,
+    title: `${surahName} ${surahNumber}:${a.ayah} — ${language === 'ur' ? 'ترجمہ' : 'Translation'
+      }`,
     artist: translationReciterFor(language).name,
+    arabic: a.arabic,
+    translation: translationTextFor(a) ?? undefined,
+    subtitle: `${surahName} • ${surahNumber}:${a.ayah} • ${language === 'ur' ? 'ترجمہ' : 'Translation'
+      }`,
+    surahNumber,
   });
+
+  const isAyahPlaying = (a: QuranAyah) =>
+    (currentTrack?.id === a.id || currentTrack?.id === `${a.id}::${language}`) &&
+    (playbackState === State.Playing || playbackState === State.Buffering);
+
+  const isAyahCurrent = (a: QuranAyah) =>
+    currentTrack?.id === a.id || currentTrack?.id === `${a.id}::${language}`;
 
   const translationTextFor = (a: QuranAyah) =>
     language === 'ur' ? a.urdu : a.translation;
@@ -159,18 +192,17 @@ export default function QuranReaderScreen(): React.JSX.Element {
     <SafeAreaView edges={['top', 'bottom']} style={styles.safeArea}>
       <GlobalHeader />
 
-      {/* Control / nav bar */}
-      <View style={[styles.controlRow, isRTL && styles.rowRTL]}>
-        <TouchableOpacity
-          style={[styles.backBtn, isRTL && styles.rowRTL]}
-          onPress={() => navigation.goBack()}
-          activeOpacity={0.7}
-        >
-          <Text style={styles.backArrow}>◀</Text>
-          <Text style={styles.backText}>{language === 'ur' ? 'واپس' : 'Back'}</Text>
-        </TouchableOpacity>
-
+      <View style={styles.controlRow}>
         <View style={[styles.controlActions, isRTL && styles.rowRTL]}>
+          <TouchableOpacity
+            style={[styles.backBtn, isRTL && styles.rowRTL]}
+            onPress={() => navigation.goBack()}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.backArrow}>◀</Text>
+            <Text style={styles.backText}>{language === 'ur' ? 'واپس' : 'Back'}</Text>
+          </TouchableOpacity>
+
           <TouchableOpacity
             style={styles.reciterBtn}
             onPress={() => setReciterModalOpen(true)}
@@ -205,13 +237,19 @@ export default function QuranReaderScreen(): React.JSX.Element {
               {language === 'ur' ? 'مطالعہ' : 'Read'}
             </Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.playSurahBtn} onPress={playSurah} activeOpacity={0.8}>
-            <Text style={styles.playSurahText}>▶ {t('quran.playSurah')}</Text>
-          </TouchableOpacity>
         </View>
+
+        <TouchableOpacity
+          style={styles.playSurahBtn}
+          onPress={playSurah}
+          activeOpacity={0.85}
+        >
+          <Text style={styles.playSurahText}>▶  {t('quran.playSurah')}</Text>
+        </TouchableOpacity>
       </View>
 
       <ScrollView
+        ref={scrollRef}
         style={styles.scroll}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
@@ -267,7 +305,13 @@ export default function QuranReaderScreen(): React.JSX.Element {
             const translation = translationTextFor(ayah);
 
             return (
-              <View key={ayah.id} style={styles.ayahCard}>
+              <View
+                key={ayah.id}
+                style={styles.ayahCard}
+                onLayout={(e: LayoutChangeEvent) => {
+                  ayahOffsets.current[ayah.id] = e.nativeEvent.layout.y;
+                }}
+              >
                 {/* Ayah header */}
                 <View style={[styles.ayahHeader, isRTL && styles.rowRTL]}>
                   <View style={styles.ayahBadge}>
@@ -310,11 +354,19 @@ export default function QuranReaderScreen(): React.JSX.Element {
                     </TouchableOpacity>
 
                     <TouchableOpacity
-                      style={styles.playBtn}
-                      onPress={() => playAyah(ayah)}
+                      style={[styles.playBtn, isAyahCurrent(ayah) && styles.playBtnActive]}
+                      onPress={() =>
+                        isAyahCurrent(ayah) ? togglePlay() : playAyah(ayah)
+                      }
                       activeOpacity={0.7}
                     >
-                      <Text style={styles.playBtnText}>🔊</Text>
+                      {isAyahPlaying(ayah) ? (
+                        <PlayingWaves color={theme.accentGreen} height={16} />
+                      ) : (
+                        <Text style={styles.playBtnText}>
+                          {isAyahCurrent(ayah) ? '▶' : '🔊'}
+                        </Text>
+                      )}
                     </TouchableOpacity>
                   </View>
                 </View>
@@ -445,376 +497,385 @@ export default function QuranReaderScreen(): React.JSX.Element {
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: theme.bgPage,
-  },
-  controlRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: spacing.pagePadding,
-    paddingVertical: spacing.cardGap,
-    backgroundColor: theme.bgCard,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.border,
-  },
-  rowRTL: {
-    flexDirection: 'row-reverse',
-  },
-  backBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  backArrow: {
-    fontSize: 12,
-    color: theme.textBrandGreen,
-  },
-  backText: {
-    fontFamily: typography.fontFamily.english,
-    fontSize: typography.fontSize.sm,
-    color: theme.textBrandGreen,
-    fontWeight: typography.fontWeight.bold,
-  },
-  controlActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing[2],
-  },
-  reciterBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: theme.bgMuted,
-    borderWidth: 1,
-    borderColor: theme.border,
-    borderRadius: borderRadius.button,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    gap: 4,
-    maxWidth: 130,
-  },
-  reciterIcon: {
-    fontSize: 13,
-  },
-  reciterText: {
-    flexShrink: 1,
-    fontFamily: typography.fontFamily.english,
-    fontSize: typography.fontSize.xs,
-    fontWeight: typography.fontWeight.bold,
-    color: theme.textSecondary,
-  },
-  fontBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: theme.bgMuted,
-    borderWidth: 1,
-    borderColor: theme.border,
-    borderRadius: borderRadius.button,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    gap: 4,
-  },
-  fontIcon: {
-    fontSize: 13,
-  },
-  fontText: {
-    fontFamily: typography.fontFamily.english,
-    fontSize: typography.fontSize.xs,
-    fontWeight: typography.fontWeight.bold,
-    color: theme.textSecondary,
-  },
-  toggleActive: {
-    backgroundColor: theme.accentGreen,
-    borderColor: theme.accentGreen,
-  },
-  toggleActiveText: {
-    color: colors.neutral[0],
-  },
-  playSurahBtn: {
-    backgroundColor: theme.accentGreen,
-    borderRadius: borderRadius.button,
-    paddingHorizontal: spacing[3],
-    paddingVertical: 6,
-  },
-  playSurahText: {
-    fontFamily: typography.fontFamily.english,
-    fontSize: typography.fontSize.xs,
-    fontWeight: typography.fontWeight.bold,
-    color: colors.neutral[0],
-  },
-  scroll: {
-    flex: 1,
-  },
-  scrollContent: {
-    padding: spacing.pagePadding,
-    paddingBottom: spacing.sectionGap * 3,
-    gap: spacing.cardGap,
-  },
-  surahHeader: {
-    backgroundColor: theme.accentGreen,
-    borderRadius: borderRadius.card,
-    padding: spacing.cardPaddingLg,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: colors.gold[500],
-    gap: spacing[2],
-  },
-  surahArabic: {
-    fontFamily: typography.fontFamily.arabic,
-    fontSize: typography.fontSize.arabic.lg,
-    color: colors.neutral[0],
-  },
-  surahEnglish: {
-    fontFamily: typography.fontFamily.english,
-    fontSize: typography.fontSize.sm,
-    color: colors.gold[400],
-    fontWeight: typography.fontWeight.semibold,
-  },
-  bismillah: {
-    fontFamily: typography.fontFamily.arabic,
-    fontSize: typography.fontSize.arabic.sm,
-    color: colors.neutral[0],
-    textAlign: 'center',
-    marginTop: spacing[1],
-  },
-  tafseerToggle: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    alignSelf: 'flex-start',
-    gap: 6,
-    marginTop: spacing[3],
-    backgroundColor: colors.gold[200],
-    borderRadius: borderRadius.full,
-    paddingHorizontal: spacing[3],
-    paddingVertical: 6,
-  },
-  tafseerToggleIcon: {
-    fontSize: 13,
-  },
-  tafseerToggleText: {
-    fontFamily: typography.fontFamily.english,
-    fontSize: typography.fontSize.xs,
-    fontWeight: typography.fontWeight.bold,
-    color: colors.gold[600],
-  },
-  tafseerBox: {
-    marginTop: spacing[2],
-    backgroundColor: theme.bgMuted,
-    borderRadius: borderRadius.button,
-    borderLeftWidth: 3,
-    borderLeftColor: colors.gold[500],
-    padding: spacing[3],
-  },
-  tafseerSourceLabel: {
-    fontFamily: typography.fontFamily.english,
-    fontSize: typography.fontSize.xs,
-    fontWeight: typography.fontWeight.bold,
-    color: colors.gold[600],
-    marginBottom: spacing[2],
-    textAlign: 'right',
-  },
-  tafseerText: {
-    fontFamily: typography.fontFamily.english,
-    fontSize: typography.fontSize.base,
-    color: theme.textSecondary,
-    lineHeight: 20,
-  },
-  tafseerUrdu: {
-    fontFamily: typography.fontFamily.urdu,
-    textAlign: 'right',
-    writingDirection: 'rtl',
-    lineHeight: 26,
-  },
-  ayahCard: {
-    backgroundColor: theme.bgCard,
-    borderRadius: borderRadius.card,
-    padding: spacing.cardPadding,
-    borderWidth: 1,
-    borderColor: theme.border,
-    ...shadows.sm,
-  },
-  readCard: {
-    backgroundColor: theme.bgCard,
-    borderRadius: borderRadius.card,
-    padding: spacing.cardPaddingLg,
-    borderWidth: 1,
-    borderColor: theme.border,
-    ...shadows.sm,
-  },
-  readArabic: {
-    fontFamily: typography.fontFamily.arabic,
-    color: theme.textArabic,
-    textAlign: 'right',
-    writingDirection: 'rtl',
-  },
-  ayahMarker: {
-    fontFamily: typography.fontFamily.arabic,
-    color: theme.accentGreen,
-  },
-  ayahHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: spacing[3],
-  },
-  ayahBadge: {
-    backgroundColor: theme.accentSoft,
-    borderRadius: borderRadius.badge,
-    paddingHorizontal: spacing[3],
-    paddingVertical: 4,
-  },
-  ayahBadgeText: {
-    fontFamily: typography.fontFamily.english,
-    fontSize: typography.fontSize.xs,
-    fontWeight: typography.fontWeight.bold,
-    color: theme.accentGreen,
-  },
-  ayahActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing[2],
-  },
-  iconBtn: {
-    width: 34,
-    height: 34,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  bookmarkIcon: {
-    fontSize: 18,
-    opacity: 0.5,
-  },
-  bookmarkActive: {
-    opacity: 1,
-  },
-  playBtn: {
-    backgroundColor: theme.accentSoft,
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  playBtnText: {
-    fontSize: 16,
-  },
-  arabic: {
-    fontFamily: typography.fontFamily.arabic,
-    color: theme.textArabic,
-    textAlign: 'right',
-    writingDirection: 'rtl',
-    marginVertical: spacing[2],
-  },
-  arabicActive: {
-    color: colors.gold[400],
-  },
-  divider: {
-    height: 1,
-    backgroundColor: theme.borderDivider,
-    marginVertical: spacing[3],
-  },
-  translation: {
-    fontFamily: typography.fontFamily.english,
-    color: theme.textSecondary,
-  },
-  translationUrdu: {
-    fontFamily: typography.fontFamily.urdu,
-    textAlign: 'right',
-    writingDirection: 'rtl',
-  },
-  centerBox: {
-    paddingVertical: spacing.sectionGap * 2,
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: spacing[3],
-  },
-  emptyText: {
-    fontFamily: typography.fontFamily.english,
-    fontSize: typography.fontSize.base,
-    color: theme.textSecondary,
-    textAlign: 'center',
-  },
-  errorText: {
-    fontFamily: typography.fontFamily.english,
-    fontSize: typography.fontSize.base,
-    color: colors.status.error,
-    textAlign: 'center',
-  },
-  retryBtn: {
-    backgroundColor: theme.accentGreen,
-    borderRadius: borderRadius.button,
-    paddingHorizontal: spacing[5],
-    paddingVertical: spacing[2],
-  },
-  retryBtnText: {
-    fontFamily: typography.fontFamily.english,
-    fontSize: typography.fontSize.sm,
-    fontWeight: typography.fontWeight.bold,
-    color: colors.neutral[0],
-  },
-  textRTL: {
-    textAlign: 'right',
-    writingDirection: 'rtl',
-  },
-  modalBackdrop: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: spacing.pagePadding,
-  },
-  modalCard: {
-    width: '100%',
-    maxWidth: 420,
-    backgroundColor: theme.bgCard,
-    borderRadius: borderRadius.card,
-    borderWidth: 1,
-    borderColor: theme.border,
-    padding: spacing.cardPadding,
-    gap: spacing[1],
-    ...shadows.sm,
-  },
-  modalTitle: {
-    fontFamily: typography.fontFamily.english,
-    fontSize: typography.fontSize.md,
-    fontWeight: typography.fontWeight.bold,
-    color: theme.textBrandGreen,
-    marginBottom: spacing[2],
-  },
-  reciterRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: spacing[3],
-    paddingHorizontal: spacing[3],
-    borderRadius: borderRadius.button,
-    gap: spacing[2],
-  },
-  reciterRowActive: {
-    backgroundColor: theme.accentSoft,
-  },
-  reciterRowTextCol: {
-    flex: 1,
-  },
-  reciterRowName: {
-    fontFamily: typography.fontFamily.english,
-    fontSize: typography.fontSize.base,
-    fontWeight: typography.fontWeight.semibold,
-    color: theme.textPrimary,
-  },
-  reciterRowNameActive: {
-    color: theme.textBrandGreen,
-  },
-  reciterRowSub: {
-    fontFamily: typography.fontFamily.urdu,
-    fontSize: typography.fontSize.sm,
-    color: theme.textSecondary,
-    marginTop: 2,
-  },
-  reciterCheck: {
-    fontSize: 16,
-    fontWeight: typography.fontWeight.bold,
-    color: theme.accentGreen,
-  },
+    safeArea: {
+      flex: 1,
+      backgroundColor: theme.bgPage,
+    },
+    controlRow: {
+      flexDirection: 'column',
+      alignItems: 'stretch',
+      gap: spacing[2],
+      paddingHorizontal: spacing.pagePadding,
+      paddingVertical: spacing.cardGap,
+      backgroundColor: theme.bgCard,
+      borderBottomWidth: 1,
+      borderBottomColor: theme.border,
+    },
+    rowRTL: {
+      flexDirection: 'row-reverse',
+    },
+    backBtn: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+    },
+    backArrow: {
+      fontSize: 12,
+      color: theme.textBrandGreen,
+    },
+    backText: {
+      fontFamily: typography.fontFamily.english,
+      fontSize: typography.fontSize.sm,
+      color: theme.textBrandGreen,
+      fontWeight: typography.fontWeight.bold,
+    },
+    controlActions: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      alignItems: 'center',
+      gap: spacing[2],
+    },
+    reciterBtn: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: theme.bgMuted,
+      borderWidth: 1,
+      borderColor: theme.border,
+      borderRadius: borderRadius.button,
+      paddingHorizontal: 10,
+      paddingVertical: 4,
+      gap: 4,
+      maxWidth: 130,
+    },
+    reciterIcon: {
+      fontSize: 13,
+    },
+    reciterText: {
+      flexShrink: 1,
+      fontFamily: typography.fontFamily.english,
+      fontSize: typography.fontSize.xs,
+      fontWeight: typography.fontWeight.bold,
+      color: theme.textSecondary,
+    },
+    fontBtn: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: theme.bgMuted,
+      borderWidth: 1,
+      borderColor: theme.border,
+      borderRadius: borderRadius.button,
+      paddingHorizontal: 10,
+      paddingVertical: 4,
+      gap: 4,
+    },
+    fontIcon: {
+      fontSize: 13,
+    },
+    fontText: {
+      fontFamily: typography.fontFamily.english,
+      fontSize: typography.fontSize.xs,
+      fontWeight: typography.fontWeight.bold,
+      color: theme.textSecondary,
+    },
+    toggleActive: {
+      backgroundColor: theme.accentGreen,
+      borderColor: theme.accentGreen,
+    },
+    toggleActiveText: {
+      color: colors.neutral[0],
+    },
+    playSurahBtn: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: theme.accentGreen,
+      borderRadius: borderRadius.button,
+      paddingHorizontal: spacing[3],
+      paddingVertical: spacing[2] + 2,
+    },
+    playSurahText: {
+      fontFamily: typography.fontFamily.english,
+      fontSize: typography.fontSize.sm,
+      fontWeight: typography.fontWeight.bold,
+      color: colors.neutral[0],
+    },
+    scroll: {
+      flex: 1,
+    },
+    scrollContent: {
+      padding: spacing.pagePadding,
+      paddingBottom: spacing.sectionGap * 3,
+      gap: spacing.cardGap,
+    },
+    surahHeader: {
+      backgroundColor: theme.accentGreen,
+      borderRadius: borderRadius.card,
+      padding: spacing.cardPaddingLg,
+      alignItems: 'center',
+      borderWidth: 1,
+      borderColor: colors.gold[500],
+      gap: spacing[2],
+    },
+    surahArabic: {
+      fontFamily: typography.fontFamily.arabic,
+      fontSize: typography.fontSize.arabic.lg,
+      color: colors.neutral[0],
+    },
+    surahEnglish: {
+      fontFamily: typography.fontFamily.english,
+      fontSize: typography.fontSize.sm,
+      color: colors.gold[400],
+      fontWeight: typography.fontWeight.semibold,
+    },
+    bismillah: {
+      fontFamily: typography.fontFamily.arabic,
+      fontSize: typography.fontSize.arabic.sm,
+      color: colors.neutral[0],
+      textAlign: 'center',
+      marginTop: spacing[1],
+    },
+    tafseerToggle: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      alignSelf: 'flex-start',
+      gap: 6,
+      marginTop: spacing[3],
+      backgroundColor: colors.gold[200],
+      borderRadius: borderRadius.full,
+      paddingHorizontal: spacing[3],
+      paddingVertical: 6,
+    },
+    tafseerToggleIcon: {
+      fontSize: 13,
+    },
+    tafseerToggleText: {
+      fontFamily: typography.fontFamily.english,
+      fontSize: typography.fontSize.xs,
+      fontWeight: typography.fontWeight.bold,
+      color: colors.gold[600],
+    },
+    tafseerBox: {
+      marginTop: spacing[2],
+      backgroundColor: theme.bgMuted,
+      borderRadius: borderRadius.button,
+      borderLeftWidth: 3,
+      borderLeftColor: colors.gold[500],
+      padding: spacing[3],
+    },
+    tafseerSourceLabel: {
+      fontFamily: typography.fontFamily.english,
+      fontSize: typography.fontSize.xs,
+      fontWeight: typography.fontWeight.bold,
+      color: colors.gold[600],
+      marginBottom: spacing[2],
+      textAlign: 'right',
+    },
+    tafseerText: {
+      fontFamily: typography.fontFamily.english,
+      fontSize: typography.fontSize.base,
+      color: theme.textSecondary,
+      lineHeight: 20,
+    },
+    tafseerUrdu: {
+      fontFamily: typography.fontFamily.urdu,
+      textAlign: 'right',
+      writingDirection: 'rtl',
+      lineHeight: 26,
+    },
+    ayahCard: {
+      backgroundColor: theme.bgCard,
+      borderRadius: borderRadius.card,
+      padding: spacing.cardPadding,
+      borderWidth: 1,
+      borderColor: theme.border,
+      ...shadows.sm,
+    },
+    readCard: {
+      backgroundColor: theme.bgCard,
+      borderRadius: borderRadius.card,
+      padding: spacing.cardPaddingLg,
+      borderWidth: 1,
+      borderColor: theme.border,
+      ...shadows.sm,
+    },
+    readArabic: {
+      fontFamily: typography.fontFamily.arabic,
+      color: theme.textArabic,
+      textAlign: 'right',
+      writingDirection: 'rtl',
+    },
+    ayahMarker: {
+      fontFamily: typography.fontFamily.arabic,
+      color: theme.accentGreen,
+    },
+    ayahHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: spacing[3],
+    },
+    ayahBadge: {
+      backgroundColor: theme.accentSoft,
+      borderRadius: borderRadius.badge,
+      paddingHorizontal: spacing[3],
+      paddingVertical: 4,
+    },
+    ayahBadgeText: {
+      fontFamily: typography.fontFamily.english,
+      fontSize: typography.fontSize.xs,
+      fontWeight: typography.fontWeight.bold,
+      color: theme.accentGreen,
+    },
+    ayahActions: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing[2],
+    },
+    iconBtn: {
+      width: 34,
+      height: 34,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    bookmarkIcon: {
+      fontSize: 18,
+      opacity: 0.5,
+    },
+    bookmarkActive: {
+      opacity: 1,
+    },
+    playBtn: {
+      backgroundColor: theme.accentSoft,
+      width: 34,
+      height: 34,
+      borderRadius: 17,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    playBtnActive: {
+      borderWidth: 1.5,
+      borderColor: theme.accentGreen,
+    },
+    playBtnText: {
+      fontSize: 16,
+      color: theme.accentGreen,
+    },
+    arabic: {
+      fontFamily: typography.fontFamily.arabic,
+      color: theme.textArabic,
+      textAlign: 'right',
+      writingDirection: 'rtl',
+      marginVertical: spacing[2],
+    },
+    arabicActive: {
+      color: colors.gold[400],
+    },
+    divider: {
+      height: 1,
+      backgroundColor: theme.borderDivider,
+      marginVertical: spacing[3],
+    },
+    translation: {
+      fontFamily: typography.fontFamily.english,
+      color: theme.textSecondary,
+    },
+    translationUrdu: {
+      fontFamily: typography.fontFamily.urdu,
+      textAlign: 'right',
+      writingDirection: 'rtl',
+    },
+    centerBox: {
+      paddingVertical: spacing.sectionGap * 2,
+      justifyContent: 'center',
+      alignItems: 'center',
+      gap: spacing[3],
+    },
+    emptyText: {
+      fontFamily: typography.fontFamily.english,
+      fontSize: typography.fontSize.base,
+      color: theme.textSecondary,
+      textAlign: 'center',
+    },
+    errorText: {
+      fontFamily: typography.fontFamily.english,
+      fontSize: typography.fontSize.base,
+      color: colors.status.error,
+      textAlign: 'center',
+    },
+    retryBtn: {
+      backgroundColor: theme.accentGreen,
+      borderRadius: borderRadius.button,
+      paddingHorizontal: spacing[5],
+      paddingVertical: spacing[2],
+    },
+    retryBtnText: {
+      fontFamily: typography.fontFamily.english,
+      fontSize: typography.fontSize.sm,
+      fontWeight: typography.fontWeight.bold,
+      color: colors.neutral[0],
+    },
+    textRTL: {
+      textAlign: 'right',
+      writingDirection: 'rtl',
+    },
+    modalBackdrop: {
+      flex: 1,
+      backgroundColor: 'rgba(0,0,0,0.5)',
+      justifyContent: 'center',
+      alignItems: 'center',
+      padding: spacing.pagePadding,
+    },
+    modalCard: {
+      width: '100%',
+      maxWidth: 420,
+      backgroundColor: theme.bgCard,
+      borderRadius: borderRadius.card,
+      borderWidth: 1,
+      borderColor: theme.border,
+      padding: spacing.cardPadding,
+      gap: spacing[1],
+      ...shadows.sm,
+    },
+    modalTitle: {
+      fontFamily: typography.fontFamily.english,
+      fontSize: typography.fontSize.md,
+      fontWeight: typography.fontWeight.bold,
+      color: theme.textBrandGreen,
+      marginBottom: spacing[2],
+    },
+    reciterRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingVertical: spacing[3],
+      paddingHorizontal: spacing[3],
+      borderRadius: borderRadius.button,
+      gap: spacing[2],
+    },
+    reciterRowActive: {
+      backgroundColor: theme.accentSoft,
+    },
+    reciterRowTextCol: {
+      flex: 1,
+    },
+    reciterRowName: {
+      fontFamily: typography.fontFamily.english,
+      fontSize: typography.fontSize.base,
+      fontWeight: typography.fontWeight.semibold,
+      color: theme.textPrimary,
+    },
+    reciterRowNameActive: {
+      color: theme.textBrandGreen,
+    },
+    reciterRowSub: {
+      fontFamily: typography.fontFamily.urdu,
+      fontSize: typography.fontSize.sm,
+      color: theme.textSecondary,
+      marginTop: 2,
+    },
+    reciterCheck: {
+      fontSize: 16,
+      fontWeight: typography.fontWeight.bold,
+      color: theme.accentGreen,
+    },
   });

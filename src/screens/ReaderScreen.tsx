@@ -46,8 +46,10 @@ export default function ReaderScreen(): React.JSX.Element {
 
   const handlePlayVerse = (item: OfflineContent) => {
     if (!item.audioUrl) return;
-    
-    // Construct track meta
+
+    const translation =
+      language === 'ur' && item.urduText ? item.urduText : item.translationText;
+
     playTrack({
       id: item.id,
       url: item.audioUrl,
@@ -56,6 +58,11 @@ export default function ReaderScreen(): React.JSX.Element {
       chapterId: item.chapterId,
       bookId: bookId,
       hadithNumber: item.hadithNumber ?? undefined,
+      arabic: item.verseText,
+      translation: translation ?? undefined,
+      subtitle: item.hadithNumber
+        ? `Hadith #${item.hadithNumber}`
+        : `Verse #${item.sequenceNumber}`,
     });
   };
 

@@ -6,6 +6,7 @@ import {
   AudioPlayer,
   AudioStatus,
 } from 'expo-audio';
+import { TimedWord } from '@shared-types';
 
 export enum PlaybackState {
   None = 'none',
@@ -24,6 +25,11 @@ interface AudioTrackInfo {
   chapterId?: string;
   bookId?: string;
   hadithNumber?: number;
+  surahNumber?: number;
+  arabic?: string;
+  translation?: string;
+  subtitle?: string;
+  words?: TimedWord[];
 }
 
 interface AudioState {
@@ -35,6 +41,7 @@ interface AudioState {
   isRepeatEnabled: boolean;
   queue: AudioTrackInfo[];
   durations: Record<string, number>;
+  playbackRate: number;
 
   playTrack: (track: AudioTrackInfo, startSeconds?: number) => Promise<void>;
   togglePlay: () => Promise<void>;
@@ -43,10 +50,13 @@ interface AudioState {
   skipToPrevious: () => Promise<void>;
   toggleShuffle: () => void;
   toggleRepeat: () => void;
+  setPlaybackRate: (rate: number) => void;
   resetPlayer: () => Promise<void>;
   seekTo: (seconds: number) => Promise<void>;
   seekGlobal: (seconds: number) => Promise<void>;
 }
+
+export const PLAYBACK_RATES = [0.75, 1, 1.25, 1.5, 2] as const;
 
 type StatusSub = { remove: () => void };
 
@@ -54,6 +64,8 @@ let player: AudioPlayer | null = null;
 let statusSub: StatusSub | null = null;
 let pendingSeekSeconds = 0;
 let audioModeReady = false;
+let advancing = false;
+let prefetchTimer: ReturnType<typeof setTimeout> | null = null;
 
 function fetchWebDurationSeconds(url: string): Promise<number> {
   return new Promise((resolve) => {
@@ -133,7 +145,7 @@ export const useAudioStore = create<AudioState>((set, get) => {
 
   const prefetchDurations = async (tracks: AudioTrackInfo[]) => {
     const todo = tracks.filter((t) => !(get().durations[t.id] > 0));
-    const CONCURRENCY = Platform.OS === 'web' ? 6 : 4;
+    const CONCURRENCY = Platform.OS === 'web' ? 6 : 2;
     for (let i = 0; i < todo.length; i += CONCURRENCY) {
       const batch = todo.slice(i, i + CONCURRENCY);
       const results = await Promise.all(
@@ -151,12 +163,25 @@ export const useAudioStore = create<AudioState>((set, get) => {
     }
   };
 
+  const scheduleDurationPrefetch = (tracks: AudioTrackInfo[]) => {
+    if (prefetchTimer) clearTimeout(prefetchTimer);
+    prefetchTimer = setTimeout(() => {
+      prefetchTimer = null;
+      void prefetchDurations(tracks);
+    }, 1200);
+  };
+
   const teardownPlayer = () => {
     if (statusSub) {
-      statusSub.remove();
+      try {
+        statusSub.remove();
+      } catch {}
       statusSub = null;
     }
     if (player) {
+      try {
+        player.pause();
+      } catch {}
       try {
         player.remove();
       } catch {}
@@ -165,17 +190,23 @@ export const useAudioStore = create<AudioState>((set, get) => {
   };
 
   const handleTrackFinished = async () => {
-    if (get().isRepeatEnabled && player) {
-      await player.seekTo(0);
-      player.play();
-      return;
-    }
-    const { queue, currentTrack } = get();
-    const idx = currentTrack ? queue.findIndex((t) => t.id === currentTrack.id) : -1;
-    if (idx >= 0 && idx < queue.length - 1) {
-      await get().skipToNext();
-    } else {
-      set({ playbackState: PlaybackState.Paused });
+    if (advancing) return;
+    advancing = true;
+    try {
+      if (get().isRepeatEnabled && player) {
+        await player.seekTo(0);
+        player.play();
+        return;
+      }
+      const { queue, currentTrack } = get();
+      const idx = currentTrack ? queue.findIndex((t) => t.id === currentTrack.id) : -1;
+      if (idx >= 0 && idx < queue.length - 1) {
+        await get().skipToNext();
+      } else {
+        set({ playbackState: PlaybackState.Paused });
+      }
+    } finally {
+      advancing = false;
     }
   };
 
@@ -212,11 +243,20 @@ export const useAudioStore = create<AudioState>((set, get) => {
     }
   };
 
+  const applyRate = (rate: number) => {
+    if (!player) return;
+    try {
+      player.shouldCorrectPitch = true;
+      player.setPlaybackRate(rate, 'high');
+    } catch {}
+  };
+
   const startPlayback = (track: AudioTrackInfo, startSeconds: number) => {
     teardownPlayer();
     pendingSeekSeconds = startSeconds > 0 ? startSeconds : 0;
     player = createAudioPlayer({ uri: track.url }, { updateInterval: 100 });
     statusSub = player.addListener('playbackStatusUpdate', onPlaybackStatusUpdate);
+    applyRate(get().playbackRate);
     player.play();
   };
 
@@ -229,6 +269,7 @@ export const useAudioStore = create<AudioState>((set, get) => {
     isRepeatEnabled: false,
     queue: [],
     durations: {},
+    playbackRate: 1,
 
     playTrack: async (track, startSeconds = 0) => {
       try {
@@ -268,10 +309,10 @@ export const useAudioStore = create<AudioState>((set, get) => {
 
     setQueue: async (tracks) => {
       set({ queue: tracks });
-      prefetchDurations(tracks);
       if (tracks.length > 0 && !get().currentTrack) {
         await get().playTrack(tracks[0]);
       }
+      scheduleDurationPrefetch(tracks);
     },
 
     skipToNext: async () => {
@@ -312,8 +353,17 @@ export const useAudioStore = create<AudioState>((set, get) => {
       set((state) => ({ isRepeatEnabled: !state.isRepeatEnabled }));
     },
 
+    setPlaybackRate: (rate) => {
+      set({ playbackRate: rate });
+      applyRate(rate);
+    },
+
     resetPlayer: async () => {
       try {
+        if (prefetchTimer) {
+          clearTimeout(prefetchTimer);
+          prefetchTimer = null;
+        }
         teardownPlayer();
         pendingSeekSeconds = 0;
         set({ currentTrack: null, queue: [], position: 0, duration: 0, playbackState: PlaybackState.None });
@@ -358,3 +408,75 @@ export const useAudioStore = create<AudioState>((set, get) => {
     },
   };
 });
+
+export interface PlaybackTimeline {
+  useGlobal: boolean;
+  measured: boolean;
+  currentIndex: number;
+  queueLength: number;
+  displayPosition: number;
+  totalDuration: number;
+  percent: number;
+}
+
+export function usePlaybackTimeline(): PlaybackTimeline {
+  const currentTrack = useAudioStore((s) => s.currentTrack);
+  const position = useAudioStore((s) => s.position);
+  const duration = useAudioStore((s) => s.duration);
+  const queue = useAudioStore((s) => s.queue);
+  const durations = useAudioStore((s) => s.durations);
+
+  const currentIndex = currentTrack
+    ? queue.findIndex((t) => t.id === currentTrack.id)
+    : -1;
+  const useGlobal = queue.length > 1 && currentIndex >= 0;
+
+  if (!useGlobal) {
+    const total = duration;
+    return {
+      useGlobal: false,
+      measured: total > 0,
+      currentIndex,
+      queueLength: queue.length,
+      displayPosition: position,
+      totalDuration: total,
+      percent: total > 0 ? Math.min(100, (position / total) * 100) : 0,
+    };
+  }
+
+  const measured = queue.every((t) => (durations[t.id] || 0) > 0);
+  const elapsedBefore = queue
+    .slice(0, currentIndex)
+    .reduce((sum, t) => sum + (durations[t.id] || 0), 0);
+  const knownTotal = queue.reduce((sum, t) => sum + (durations[t.id] || 0), 0);
+  const displayPosition = elapsedBefore + position;
+  const totalDuration = measured ? knownTotal : 0;
+  const percent =
+    totalDuration > 0 ? Math.min(100, (displayPosition / totalDuration) * 100) : 0;
+
+  return {
+    useGlobal: true,
+    measured,
+    currentIndex,
+    queueLength: queue.length,
+    displayPosition,
+    totalDuration,
+    percent,
+  };
+}
+
+declare const module: { hot?: { dispose: (cb: () => void) => void } } | undefined;
+
+if (typeof module !== 'undefined' && module?.hot) {
+  module.hot.dispose(() => {
+    try {
+      statusSub?.remove();
+    } catch {}
+    try {
+      player?.pause();
+      player?.remove();
+    } catch {}
+    player = null;
+    statusSub = null;
+  });
+}

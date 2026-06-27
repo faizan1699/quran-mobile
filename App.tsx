@@ -3,15 +3,24 @@ import { StatusBar, View, ActivityIndicator } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useFonts } from 'expo-font';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import AppNavigator from '@/navigation/AppNavigator';
 import { useDeviceLocation } from '@/hooks/useDeviceLocation';
+import { usePrayerAzanScheduler } from '@/hooks/usePrayerAzanScheduler';
 import { useTheme } from '@/theme';
 import { appFonts } from '@/theme/fonts';
 import {
   applyGlobalFontScalePatch,
   setGlobalFontScale,
+  setGlobalFontFamilyMap,
 } from '@/theme/fontScalePatch';
 import { usePreferencesStore, FONT_SCALE_VALUES } from '@/store/usePreferencesStore';
+import {
+  DEFAULT_ARABIC_FONT,
+  DEFAULT_URDU_FONT,
+  isKnownArabicFont,
+  isKnownUrduFont,
+} from '@/theme/scriptFonts';
 import { colors } from '@/tokens';
 
 // Patch RN's Text once so the app-wide font-size preference scales every label.
@@ -33,13 +42,30 @@ let didAttemptAutoLocation = false;
 function AppContent(): React.JSX.Element {
   const { theme } = useTheme();
   const { detectLocation } = useDeviceLocation();
-  const [fontsLoaded, fontError] = useFonts(appFonts);
+  const [fontsLoaded, fontError] = useFonts({
+    ...appFonts,
+    ...Ionicons.font,
+    ...MaterialCommunityIcons.font,
+  });
+
+  usePrayerAzanScheduler();
 
   // Keep the global text-scale multiplier in sync with the stored preference.
   // Reading it here re-renders AppContent (and the active screen) when it
   // changes, so the new size is reflected immediately.
   const fontScale = usePreferencesStore((s) => s.fontScale);
   setGlobalFontScale(FONT_SCALE_VALUES[fontScale]);
+
+  // Live-swap the Arabic/Urdu faces app-wide: any text styled with the base
+  // family is re-rendered in the user's selected font (see fontScalePatch).
+  const arabicFont = usePreferencesStore((s) => s.arabicFont);
+  const urduFont = usePreferencesStore((s) => s.urduFont);
+  setGlobalFontFamilyMap({
+    [DEFAULT_ARABIC_FONT]: isKnownArabicFont(arabicFont)
+      ? arabicFont
+      : DEFAULT_ARABIC_FONT,
+    [DEFAULT_URDU_FONT]: isKnownUrduFont(urduFont) ? urduFont : DEFAULT_URDU_FONT,
+  });
 
   useEffect(() => {
     if (didAttemptAutoLocation) {

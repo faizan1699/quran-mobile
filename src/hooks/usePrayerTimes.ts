@@ -35,7 +35,7 @@ function formatTime(date: Date): string {
 // Map a user-facing fiqh to Adhan calculation parameters.
 // The madhab only changes the Asr time (Hanafi uses a longer shadow length);
 // Maliki/Hanbali follow the standard (Shafi) Asr height.
-function getAdhanParams(method: FiqhMethod): CalculationParameters {
+export function getAdhanParams(method: FiqhMethod): CalculationParameters {
   switch (method) {
     case 'Hanafi': {
       const params = CalculationMethod.MuslimWorldLeague();

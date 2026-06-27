@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { DEFAULT_RECITER_ID } from '@/data/reciters';
+import { DEFAULT_ARABIC_FONT, DEFAULT_URDU_FONT } from '@/theme/scriptFonts';
 
 /**
  * App-wide text size preference. Maps to a multiplier applied to every
@@ -43,6 +44,10 @@ interface PreferencesState {
   downloadedIds: string[];
   // Appearance
   fontScale: FontScale;
+  /** Font family used for Arabic / Quran text (live-swapped app-wide). */
+  arabicFont: string;
+  /** Font family used for Urdu text (live-swapped app-wide). */
+  urduFont: string;
 
   setPref: (
     key:
@@ -57,6 +62,8 @@ interface PreferencesState {
     value: boolean
   ) => void;
   setFontScale: (scale: FontScale) => void;
+  setArabicFont: (family: string) => void;
+  setUrduFont: (family: string) => void;
   setReciterId: (id: string) => void;
   toggleDownloaded: (id: string) => void;
   isDownloaded: (id: string) => boolean;
@@ -76,10 +83,16 @@ export const usePreferencesStore = create<PreferencesState>()(
       downloadOverWifiOnly: true,
       downloadedIds: [],
       fontScale: 'default',
+      arabicFont: DEFAULT_ARABIC_FONT,
+      urduFont: DEFAULT_URDU_FONT,
 
       setPref: (key, value) => set({ [key]: value } as Partial<PreferencesState>),
 
       setFontScale: (fontScale) => set({ fontScale }),
+
+      setArabicFont: (arabicFont) => set({ arabicFont }),
+
+      setUrduFont: (urduFont) => set({ urduFont }),
 
       setReciterId: (reciterId) => set({ reciterId }),
 

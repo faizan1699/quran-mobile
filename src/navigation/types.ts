@@ -13,6 +13,7 @@ export type RootStackParamList = {
     surahNumber: number;
     surahName: string;
   };
+  Player: undefined;
   NotesList: undefined;
   NoteEditor:
     | {

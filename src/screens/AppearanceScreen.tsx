@@ -18,6 +18,11 @@ import { ACCENT_PRESETS, BACKGROUND_PRESETS } from '@/theme/appearancePresets';
 import { normalizeHex, isValidHex, readableText } from '@/theme/colorUtils';
 import { RootStackParamList } from '@/navigation/types';
 import { usePreferencesStore, FontScale } from '@/store/usePreferencesStore';
+import {
+  ARABIC_FONTS,
+  URDU_FONTS,
+  ScriptFontOption,
+} from '@/theme/scriptFonts';
 import { GlobalHeader } from '@/components/GlobalHeader';
 import { AppSwitch } from '@/components/AppSwitch';
 import { ColorPicker } from '@/components/ColorPicker';
@@ -71,6 +76,72 @@ function Swatch({
   );
 }
 
+function FontSection({
+  title,
+  desc,
+  options,
+  selected,
+  onSelect,
+  styles,
+  theme,
+  isRTL,
+}: {
+  title: string;
+  desc: string;
+  options: ScriptFontOption[];
+  selected: string;
+  onSelect: (family: string) => void;
+  styles: Styles;
+  theme: Theme;
+  isRTL: boolean;
+}): React.JSX.Element {
+  return (
+    <View style={styles.sectionCard}>
+      <Text style={[styles.sectionHeading, isRTL && styles.textRTL]}>{title}</Text>
+      <Text style={[styles.sectionDesc, isRTL && styles.textRTL]}>{desc}</Text>
+      <View style={styles.fontList}>
+        {options.map((opt) => {
+          const active = selected === opt.family;
+          return (
+            <TouchableOpacity
+              key={`${opt.family}-${opt.label}`}
+              style={[styles.fontOption, active && styles.fontOptionActive]}
+              onPress={() => onSelect(opt.family)}
+              activeOpacity={0.85}
+            >
+              <View style={styles.fontOptionTextCol}>
+                <Text
+                  style={[
+                    styles.fontSample,
+                    { fontFamily: opt.previewFamily ?? opt.family },
+                  ]}
+                  numberOfLines={1}
+                >
+                  {opt.sample}
+                </Text>
+                <Text
+                  style={[
+                    styles.fontOptionLabel,
+                    active && styles.fontOptionLabelActive,
+                  ]}
+                  numberOfLines={1}
+                >
+                  {opt.label}
+                </Text>
+              </View>
+              <View style={[styles.fontRadio, active && styles.fontRadioActive]}>
+                {active ? (
+                  <Ionicons name="checkmark" size={14} color={theme.textOnAccent} />
+                ) : null}
+              </View>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+    </View>
+  );
+}
+
 export default function AppearanceScreen(): React.JSX.Element {
   const { t, isRTL } = useTranslation();
   const {
@@ -91,6 +162,10 @@ export default function AppearanceScreen(): React.JSX.Element {
 
   const fontScale = usePreferencesStore((s) => s.fontScale);
   const setFontScale = usePreferencesStore((s) => s.setFontScale);
+  const arabicFont = usePreferencesStore((s) => s.arabicFont);
+  const setArabicFont = usePreferencesStore((s) => s.setArabicFont);
+  const urduFont = usePreferencesStore((s) => s.urduFont);
+  const setUrduFont = usePreferencesStore((s) => s.setUrduFont);
 
   const [pickerTarget, setPickerTarget] = useState<PickerTarget | null>(null);
   const [hexInput, setHexInput] = useState('');
@@ -393,6 +468,28 @@ export default function AppearanceScreen(): React.JSX.Element {
           </View>
         </View>
 
+        <FontSection
+          title={t('settings.arabicFont')}
+          desc={t('settings.arabicFontDesc')}
+          options={ARABIC_FONTS}
+          selected={arabicFont}
+          onSelect={setArabicFont}
+          styles={styles}
+          theme={theme}
+          isRTL={isRTL}
+        />
+
+        <FontSection
+          title={t('settings.urduFont')}
+          desc={t('settings.urduFontDesc')}
+          options={URDU_FONTS}
+          selected={urduFont}
+          onSelect={setUrduFont}
+          styles={styles}
+          theme={theme}
+          isRTL={isRTL}
+        />
+
         <Text style={[styles.previewCaption, isRTL && styles.textRTL]}>
           {t('settings.preview')}
         </Text>
@@ -631,6 +728,59 @@ const createStyles = (theme: Theme) =>
     divider: {
       height: 1,
       backgroundColor: theme.borderDivider,
+    },
+    fontList: {
+      marginTop: spacing[3],
+      gap: spacing[2],
+    },
+    fontOption: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: spacing[3],
+      paddingVertical: spacing[2],
+      paddingHorizontal: spacing[3],
+      borderRadius: borderRadius.card,
+      borderWidth: 1.5,
+      borderColor: theme.border,
+      backgroundColor: theme.bgMuted,
+    },
+    fontOptionActive: {
+      borderColor: theme.accentGreen,
+      backgroundColor: theme.accentSoft,
+    },
+    fontOptionTextCol: {
+      flex: 1,
+    },
+    fontSample: {
+      fontSize: 26,
+      lineHeight: 46,
+      color: theme.textPrimary,
+      textAlign: 'right',
+      writingDirection: 'rtl',
+    },
+    fontOptionLabel: {
+      fontFamily: typography.fontFamily.english,
+      fontSize: typography.fontSize.xs,
+      fontWeight: typography.fontWeight.semibold,
+      color: theme.textSecondary,
+      marginTop: 2,
+    },
+    fontOptionLabelActive: {
+      color: theme.textBrandGreen,
+    },
+    fontRadio: {
+      width: 22,
+      height: 22,
+      borderRadius: borderRadius.full,
+      borderWidth: 2,
+      borderColor: theme.border,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    fontRadioActive: {
+      borderColor: theme.accentGreen,
+      backgroundColor: theme.accentGreen,
     },
     segment: {
       flexDirection: 'row',
