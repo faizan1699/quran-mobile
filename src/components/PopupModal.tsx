@@ -100,12 +100,23 @@ export function PopupModal(): React.JSX.Element | null {
           ) : null}
 
           {popup.imageUrl ? (
-            <Image
-              source={{ uri: popup.imageUrl }}
-              style={styles.image}
-              contentFit="cover"
-              transition={200}
-            />
+            <View style={styles.imageWrap}>
+              <Image
+                source={{ uri: popup.imageUrl }}
+                style={styles.imageBlur}
+                contentFit="cover"
+                blurRadius={40}
+                transition={200}
+              />
+              <View style={styles.imageScrim} />
+              <Image
+                source={{ uri: popup.imageUrl }}
+                style={styles.image}
+                contentFit="contain"
+                contentPosition="center"
+                transition={200}
+              />
+            </View>
           ) : null}
 
           <ScrollView
@@ -162,10 +173,24 @@ const createStyles = (theme: Theme) =>
       alignItems: 'center',
       justifyContent: 'center',
     },
+    imageWrap: {
+      width: '100%',
+      height: 220,
+      backgroundColor: theme.bgPageAlt,
+      alignItems: 'center',
+      justifyContent: 'center',
+      overflow: 'hidden',
+    },
+    imageBlur: {
+      ...StyleSheet.absoluteFillObject,
+    },
+    imageScrim: {
+      ...StyleSheet.absoluteFillObject,
+      backgroundColor: 'rgba(0,0,0,0.22)',
+    },
     image: {
       width: '100%',
-      height: 200,
-      backgroundColor: theme.bgPageAlt,
+      height: '100%',
     },
     body: {
       flexGrow: 0,

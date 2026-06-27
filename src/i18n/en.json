@@ -178,6 +178,8 @@
     "border_double": "Double",
     "border_bevel": "Bevel",
     "border_etch": "Etch",
+    "border_frame": "Frame",
+    "border_ornate": "Ornate",
     "catAyah": "Al-Quran",
     "catDua": "Dua",
     "catHadith": "Hadith",
