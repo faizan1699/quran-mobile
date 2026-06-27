@@ -156,6 +156,25 @@
     "share": "Share",
     "calculationMethod": "Calculation Method"
   },
+  "share": {
+    "title": "Share as image",
+    "shareBtn": "Share to apps",
+    "content": "Content",
+    "arabicOnly": "Arabic only",
+    "withTranslation": "With translation",
+    "language": "Translation language",
+    "english": "English",
+    "urdu": "اردو",
+    "background": "Background",
+    "textSize": "Text size",
+    "corners": "Corners",
+    "border": "Border",
+    "catAyah": "Al-Quran",
+    "catDua": "Dua",
+    "catHadith": "Hadith",
+    "failed": "Could not share",
+    "failedBody": "Something went wrong while creating the image. Please try again."
+  },
   "library": {
     "searchPlaceholder": "Search for books...",
     "allBooks": "All Books",

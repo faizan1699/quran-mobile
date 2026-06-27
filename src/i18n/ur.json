@@ -156,6 +156,25 @@
     "share": "شیئر کریں",
     "calculationMethod": "طریقہ حساب"
   },
+  "share": {
+    "title": "تصویر کے طور پر شیئر کریں",
+    "shareBtn": "ایپس میں شیئر کریں",
+    "content": "مواد",
+    "arabicOnly": "صرف عربی",
+    "withTranslation": "ترجمہ کے ساتھ",
+    "language": "ترجمہ کی زبان",
+    "english": "English",
+    "urdu": "اردو",
+    "background": "پس منظر",
+    "textSize": "متن کا سائز",
+    "corners": "کونے",
+    "border": "بارڈر",
+    "catAyah": "القرآن",
+    "catDua": "دعا",
+    "catHadith": "حدیث",
+    "failed": "شیئر نہیں ہو سکا",
+    "failedBody": "تصویر بناتے ہوئے مسئلہ پیش آیا۔ دوبارہ کوشش کریں۔"
+  },
   "library": {
     "searchPlaceholder": "کتابیں تلاش کریں...",
     "allBooks": "تمام کتابیں",

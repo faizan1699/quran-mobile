@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { StyleSheet, View, Text, TouchableOpacity } from 'react-native';
 import { useTranslation } from '@/i18n';
 import { useTheme, Theme } from '@/theme';
+import { ShareButton } from '@/components/share/ShareButton';
 import { colors, borderRadius, spacing, typography, shadows } from '@/tokens';
 
 interface DuaItem {
@@ -68,16 +69,29 @@ export function DuaOfMomentCard(): React.JSX.Element {
 
       <View style={styles.footer}>
         <Text style={styles.reference}>{reference}</Text>
-        <View style={styles.dotsContainer}>
-          {DUAS_DATA.map((_, index) => (
-            <TouchableOpacity
-              key={index}
-              style={[styles.dot, activeIndex === index && styles.activeDot]}
-              onPress={() => setActiveIndex(index)}
-              activeOpacity={0.7}
-              accessibilityLabel={`View dua ${index + 1}`}
-            />
-          ))}
+        <View style={styles.footerRight}>
+          <ShareButton
+            content={{
+              kind: 'dua',
+              arabic: dua.arabic,
+              english: dua.english,
+              urdu: dua.urdu,
+              reference: dua.reference,
+              referenceUrdu: dua.referenceUrdu,
+            }}
+            color={theme.textGold}
+          />
+          <View style={styles.dotsContainer}>
+            {DUAS_DATA.map((_, index) => (
+              <TouchableOpacity
+                key={index}
+                style={[styles.dot, activeIndex === index && styles.activeDot]}
+                onPress={() => setActiveIndex(index)}
+                activeOpacity={0.7}
+                accessibilityLabel={`View dua ${index + 1}`}
+              />
+            ))}
+          </View>
         </View>
       </View>
     </View>
@@ -140,6 +154,11 @@ const createStyles = (theme: Theme) =>
       fontSize: typography.fontSize.xs,
       color: theme.textGold,
       fontWeight: typography.fontWeight.semibold,
+    },
+    footerRight: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing[3],
     },
     dotsContainer: {
       flexDirection: 'row',

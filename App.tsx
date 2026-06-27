@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useFonts } from 'expo-font';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import AppNavigator from '@/navigation/AppNavigator';
+import { ShareProvider } from '@/components/share/ShareProvider';
 import { useDeviceLocation } from '@/hooks/useDeviceLocation';
 import { usePrayerAzanScheduler } from '@/hooks/usePrayerAzanScheduler';
 import { useReminderScheduler } from '@/hooks/useReminderScheduler';
@@ -90,7 +91,9 @@ function AppContent(): React.JSX.Element {
   return (
     <View style={{ flex: 1, backgroundColor: theme.bgPage }}>
       <StatusBar barStyle={theme.statusBarStyle} backgroundColor={theme.bgHeader} />
-      <AppNavigator />
+      <ShareProvider>
+        <AppNavigator />
+      </ShareProvider>
     </View>
   );
 }

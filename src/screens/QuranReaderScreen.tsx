@@ -27,6 +27,7 @@ import { BackButton } from '@/components/BackButton';
 import { AudioPlayerBar } from '@/components/AudioPlayerBar';
 import { PlayingWaves } from '@/components/PlayingWaves';
 import { AyahArabic } from '@/components/AyahArabic';
+import { useShareSheet } from '@/components/share/ShareProvider';
 import { useSurahAyahs, useTafseerSections } from '@/hooks/useQuran';
 import { getSurahMeta } from '@/data/surahMeta';
 import {
@@ -82,6 +83,8 @@ export default function QuranReaderScreen(): React.JSX.Element {
   const bookmarks = useQuranStore((s) => s.bookmarks);
   const toggleBookmark = useQuranStore((s) => s.toggleBookmark);
   const setLastRead = useQuranStore((s) => s.setLastRead);
+
+  const { share } = useShareSheet();
 
   const reciterId = usePreferencesStore((s) => s.reciterId);
   const setReciterId = usePreferencesStore((s) => s.setReciterId);
@@ -397,6 +400,26 @@ export default function QuranReaderScreen(): React.JSX.Element {
                           <Text style={styles.noteCountText}>{ayahNotes.length}</Text>
                         </View>
                       )}
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      style={styles.iconBtn}
+                      onPress={() =>
+                        share({
+                          kind: 'ayah',
+                          arabic: ayah.arabic,
+                          english: ayah.translation,
+                          urdu: ayah.urdu,
+                          reference: `${surahName} ${surahNumber}:${ayah.ayah}`,
+                          referenceUrdu: `${surahName} ${toArabicDigits(
+                            surahNumber
+                          )}:${toArabicDigits(ayah.ayah)}`,
+                        })
+                      }
+                      activeOpacity={0.7}
+                      accessibilityLabel={t('share.shareBtn')}
+                    >
+                      <Text style={styles.bookmarkIcon}>📤</Text>
                     </TouchableOpacity>
 
                     <TouchableOpacity
