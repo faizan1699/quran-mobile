@@ -13,7 +13,7 @@ import { useTheme } from '@/theme';
 import { appFonts } from '@/theme/fonts';
 import {
   applyGlobalFontScalePatch,
-  setGlobalFontScale,
+  setScriptFontScales,
 } from '@/theme/fontScalePatch';
 import { usePreferencesStore, FONT_SCALE_VALUES } from '@/store/usePreferencesStore';
 import { applySelectedFonts } from '@/theme/scriptFonts';
@@ -47,11 +47,17 @@ function AppContent(): React.JSX.Element {
   usePrayerAzanScheduler();
   useReminderScheduler();
 
-  // Keep the global text-scale multiplier in sync with the stored preference.
-  // Reading it here re-renders AppContent (and the active screen) when it
-  // changes, so the new size is reflected immediately.
-  const fontScale = usePreferencesStore((s) => s.fontScale);
-  setGlobalFontScale(FONT_SCALE_VALUES[fontScale]);
+  // Keep the per-script text-scale multipliers in sync with the stored
+  // preference. Reading them here re-renders AppContent (and the active screen)
+  // when they change, so the new size is reflected immediately.
+  const arabicFontScale = usePreferencesStore((s) => s.arabicFontScale);
+  const urduFontScale = usePreferencesStore((s) => s.urduFontScale);
+  const englishFontScale = usePreferencesStore((s) => s.englishFontScale);
+  setScriptFontScales({
+    arabic: FONT_SCALE_VALUES[arabicFontScale],
+    urdu: FONT_SCALE_VALUES[urduFontScale],
+    english: FONT_SCALE_VALUES[englishFontScale],
+  });
 
   // Live-swap the Arabic/Urdu/English faces app-wide: any text styled with a
   // base family is re-rendered in the user's selected font (see fontScalePatch).

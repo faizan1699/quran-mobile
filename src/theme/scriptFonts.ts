@@ -1,6 +1,6 @@
 import { Platform } from 'react-native';
 import { typography } from '@/tokens';
-import { setGlobalFontFamilyMap } from './fontScalePatch';
+import { setGlobalFontFamilyMap, setScriptFamilies } from './fontScalePatch';
 
 export interface ScriptFontOption {
   family: string;
@@ -13,6 +13,8 @@ export interface ScriptFontOption {
 export const DEFAULT_ARABIC_FONT = typography.fontFamily.arabic;
 export const DEFAULT_URDU_FONT = typography.fontFamily.urdu;
 export const DEFAULT_ENGLISH_FONT = typography.fontFamily.english;
+
+setScriptFamilies([DEFAULT_ARABIC_FONT], [DEFAULT_URDU_FONT]);
 
 export const SYSTEM_FONT_FAMILY =
   Platform.select({ ios: 'System', android: 'sans-serif', default: 'system-ui' }) ??

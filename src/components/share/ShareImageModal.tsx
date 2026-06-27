@@ -107,7 +107,7 @@ export function ShareImageModal({
   const availableCount =
     (hasArabic ? 1 : 0) + (hasEnglish ? 1 : 0) + (hasUrdu ? 1 : 0);
 
-  const cardWidth = Math.min(width - spacing[4] * 2, 360);
+  const cardWidth = Math.min(width - spacing[5] * 2 - spacing[4], 340);
 
   const categoryLabel =
     content.kind === 'ayah'
@@ -148,6 +148,7 @@ export function ShareImageModal({
     >
       <View style={styles.backdrop}>
         <View style={styles.sheet}>
+          <View style={styles.grabber} />
           <View style={styles.header}>
             <Text style={styles.headerTitle}>{t('share.title')}</Text>
             <TouchableOpacity
@@ -159,7 +160,11 @@ export function ShareImageModal({
             </TouchableOpacity>
           </View>
 
-          <View style={styles.previewWrap}>
+          <ScrollView
+            style={styles.scroll}
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={styles.scrollContent}
+          >
             <View style={styles.previewArea}>
               <ShareCard
                 ref={cardRef}
@@ -183,13 +188,7 @@ export function ShareImageModal({
                 watermark={WATERMARK}
               />
             </View>
-          </View>
 
-          <ScrollView
-            style={styles.scroll}
-            showsVerticalScrollIndicator={false}
-            contentContainerStyle={styles.scrollContent}
-          >
             {availableCount > 1 && (
               <Section label={t('share.content')} styles={styles}>
                 <View style={styles.chipRow}>
@@ -479,8 +478,16 @@ const createStyles = (theme: Theme) =>
       backgroundColor: theme.bgPage,
       borderTopLeftRadius: borderRadius['3xl'],
       borderTopRightRadius: borderRadius['3xl'],
-      maxHeight: '94%',
+      maxHeight: '92%',
       paddingTop: spacing[2],
+    },
+    grabber: {
+      alignSelf: 'center',
+      width: 40,
+      height: 4,
+      borderRadius: 2,
+      backgroundColor: theme.borderDivider,
+      marginBottom: spacing[2],
     },
     header: {
       flexDirection: 'row',
@@ -501,27 +508,21 @@ const createStyles = (theme: Theme) =>
       padding: spacing[1],
     },
     scroll: {
+      flexGrow: 1,
       flexShrink: 1,
-      flexGrow: 0,
     },
     scrollContent: {
       paddingHorizontal: spacing[5],
       paddingTop: spacing[4],
-      paddingBottom: spacing[4],
-    },
-    previewWrap: {
-      paddingHorizontal: spacing[5],
-      paddingTop: spacing[4],
-      borderBottomWidth: 1,
-      borderBottomColor: theme.borderDivider,
-      paddingBottom: spacing[4],
+      paddingBottom: spacing[5],
     },
     previewArea: {
       alignItems: 'center',
       justifyContent: 'center',
       backgroundColor: theme.bgMuted,
       borderRadius: borderRadius.xl,
-      paddingVertical: spacing[6],
+      paddingVertical: spacing[5],
+      marginBottom: spacing[5],
     },
     section: {
       marginBottom: spacing[5],

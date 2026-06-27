@@ -92,6 +92,10 @@ function FontDropdown({
   options,
   selected,
   onSelect,
+  sizeLabel,
+  sizeOptions,
+  sizeValue,
+  onSizeChange,
   styles,
   theme,
   isRTL,
@@ -103,6 +107,10 @@ function FontDropdown({
   options: ScriptFontOption[];
   selected: string;
   onSelect: (family: string) => void;
+  sizeLabel: string;
+  sizeOptions: { value: FontScale; label: string; preview: number }[];
+  sizeValue: FontScale;
+  onSizeChange: (scale: FontScale) => void;
   styles: Styles;
   theme: Theme;
   isRTL: boolean;
@@ -138,6 +146,37 @@ function FontDropdown({
         </View>
         <Ionicons name="chevron-down" size={18} color={theme.textSecondary} />
       </TouchableOpacity>
+
+      <Text style={[styles.sizeLabel, isRTL && styles.textRTL]}>{sizeLabel}</Text>
+      <View style={[styles.segment, isRTL && styles.rowRTL]}>
+        {sizeOptions.map((opt) => {
+          const active = sizeValue === opt.value;
+          return (
+            <TouchableOpacity
+              key={opt.value}
+              style={[styles.fontScaleItem, active && styles.fontScaleItemActive]}
+              onPress={() => onSizeChange(opt.value)}
+              activeOpacity={0.85}
+            >
+              <Text
+                style={[
+                  styles.fontScaleGlyph,
+                  active && styles.fontScaleTextActive,
+                  { fontSize: opt.preview },
+                ]}
+              >
+                A
+              </Text>
+              <Text
+                style={[styles.fontScaleLabel, active && styles.fontScaleTextActive]}
+                numberOfLines={1}
+              >
+                {opt.label}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
 
       <Modal
         visible={open}
@@ -225,14 +264,28 @@ export default function AppearanceScreen(): React.JSX.Element {
   const navigation = useNavigation<NavigationProp<RootStackParamList>>();
   const styles = useMemo(() => createStyles(theme), [theme]);
 
-  const fontScale = usePreferencesStore((s) => s.fontScale);
-  const setFontScale = usePreferencesStore((s) => s.setFontScale);
+  const arabicFontScale = usePreferencesStore((s) => s.arabicFontScale);
+  const setArabicFontScale = usePreferencesStore((s) => s.setArabicFontScale);
+  const urduFontScale = usePreferencesStore((s) => s.urduFontScale);
+  const setUrduFontScale = usePreferencesStore((s) => s.setUrduFontScale);
+  const englishFontScale = usePreferencesStore((s) => s.englishFontScale);
+  const setEnglishFontScale = usePreferencesStore((s) => s.setEnglishFontScale);
   const arabicFont = usePreferencesStore((s) => s.arabicFont);
   const setArabicFont = usePreferencesStore((s) => s.setArabicFont);
   const urduFont = usePreferencesStore((s) => s.urduFont);
   const setUrduFont = usePreferencesStore((s) => s.setUrduFont);
   const englishFont = usePreferencesStore((s) => s.englishFont);
   const setEnglishFont = usePreferencesStore((s) => s.setEnglishFont);
+
+  const sizeOptions = useMemo(
+    () =>
+      FONT_SCALE_OPTIONS.map((opt) => ({
+        value: opt.value,
+        label: t(opt.labelKey),
+        preview: opt.preview,
+      })),
+    [t]
+  );
 
   const [pickerTarget, setPickerTarget] = useState<PickerTarget | null>(null);
   const [hexInput, setHexInput] = useState('');

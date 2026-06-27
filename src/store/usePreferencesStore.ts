@@ -10,12 +10,12 @@ import {
 } from '@/theme/scriptFonts';
 
 /**
- * App-wide text size preference. Maps to a multiplier applied to every
+ * Per-script text size preference. Maps to a multiplier applied to matching
  * `fontSize` via the global Text patch in `App.tsx` (see `FONT_SCALE_VALUES`).
  */
 export type FontScale = 'small' | 'default' | 'large' | 'xlarge';
 
-/** Multiplier applied to all text for each font-scale choice. */
+/** Multiplier applied to text for each font-scale choice. */
 export const FONT_SCALE_VALUES: Record<FontScale, number> = {
   small: 0.9,
   default: 1,
@@ -50,7 +50,12 @@ interface PreferencesState {
   /** Surah/book ids the user has "downloaded" for offline use (mock). */
   downloadedIds: string[];
   // Appearance
-  fontScale: FontScale;
+  /** Text size for Arabic / Quran text. */
+  arabicFontScale: FontScale;
+  /** Text size for Urdu text. */
+  urduFontScale: FontScale;
+  /** Text size for English / UI text. */
+  englishFontScale: FontScale;
   /** Font family used for Arabic / Quran text (live-swapped app-wide). */
   arabicFont: string;
   /** Font family used for Urdu text (live-swapped app-wide). */
@@ -72,7 +77,9 @@ interface PreferencesState {
       | 'downloadOverWifiOnly',
     value: boolean
   ) => void;
-  setFontScale: (scale: FontScale) => void;
+  setArabicFontScale: (scale: FontScale) => void;
+  setUrduFontScale: (scale: FontScale) => void;
+  setEnglishFontScale: (scale: FontScale) => void;
   setArabicFont: (family: string) => void;
   setUrduFont: (family: string) => void;
   setEnglishFont: (family: string) => void;
@@ -96,14 +103,18 @@ export const usePreferencesStore = create<PreferencesState>()(
       reciterId: DEFAULT_RECITER_ID,
       downloadOverWifiOnly: true,
       downloadedIds: [],
-      fontScale: 'default',
+      arabicFontScale: 'default',
+      urduFontScale: 'default',
+      englishFontScale: 'default',
       arabicFont: DEFAULT_ARABIC_FONT,
       urduFont: DEFAULT_URDU_FONT,
       englishFont: DEFAULT_ENGLISH_FONT,
 
       setPref: (key, value) => set({ [key]: value } as Partial<PreferencesState>),
 
-      setFontScale: (fontScale) => set({ fontScale }),
+      setArabicFontScale: (arabicFontScale) => set({ arabicFontScale }),
+      setUrduFontScale: (urduFontScale) => set({ urduFontScale }),
+      setEnglishFontScale: (englishFontScale) => set({ englishFontScale }),
 
       setArabicFont: (arabicFont) => {
         set({ arabicFont });
@@ -134,6 +145,19 @@ export const usePreferencesStore = create<PreferencesState>()(
     {
       name: 'dawat-preferences-storage',
       storage: createJSONStorage(() => AsyncStorage),
+      version: 1,
+      migrate: (persisted, version) => {
+        const state = persisted as Partial<PreferencesState> & {
+          fontScale?: FontScale;
+        };
+        if (version < 1 && state && state.fontScale) {
+          state.arabicFontScale = state.fontScale;
+          state.urduFontScale = state.fontScale;
+          state.englishFontScale = state.fontScale;
+          delete state.fontScale;
+        }
+        return state as PreferencesState;
+      },
       onRehydrateStorage: () => (state) => {
         if (state) {
           applySelectedFonts(state.arabicFont, state.urduFont, state.englishFont);

@@ -1,12 +1,39 @@
 import React from 'react';
 import { Text as RNText, StyleSheet } from 'react-native';
 
-let currentFontScale = 1;
+export interface ScriptFontScales {
+  arabic: number;
+  urdu: number;
+  english: number;
+}
+
+let scriptScales: ScriptFontScales = { arabic: 1, urdu: 1, english: 1 };
+let hasAnyScale = false;
+
+let arabicFamilies = new Set<string>();
+let urduFamilies = new Set<string>();
+
 let fontFamilyMap: Record<string, string> = {};
 let hasFamilyRemap = false;
 
-export function setGlobalFontScale(scale: number): void {
-  currentFontScale = scale;
+/**
+ * Set the per-script text-size multipliers. Arabic and Urdu text are scaled by
+ * their own multiplier (identified via {@link setScriptFamilies}); everything
+ * else (English/Latin UI, icons) uses the `english` multiplier.
+ */
+export function setScriptFontScales(scales: ScriptFontScales): void {
+  scriptScales = scales;
+  hasAnyScale =
+    scales.arabic !== 1 || scales.urdu !== 1 || scales.english !== 1;
+}
+
+/**
+ * Register the base font families that mark text as Arabic or Urdu, so the
+ * render patch can pick the matching per-script size multiplier.
+ */
+export function setScriptFamilies(arabic: string[], urdu: string[]): void {
+  arabicFamilies = new Set(arabic);
+  urduFamilies = new Set(urdu);
 }
 
 /**
@@ -24,6 +51,14 @@ export function setGlobalFontFamilyMap(map: Record<string, string>): void {
   }
   fontFamilyMap = next;
   hasFamilyRemap = Object.keys(next).length > 0;
+}
+
+function scaleForFamily(family?: string): number {
+  if (family) {
+    if (arabicFamilies.has(family)) return scriptScales.arabic;
+    if (urduFamilies.has(family)) return scriptScales.urdu;
+  }
+  return scriptScales.english;
 }
 
 interface TextStyle {
@@ -45,7 +80,7 @@ export function applyGlobalFontScalePatch(): void {
   TextAny.__fontScalePatched = true;
 
   TextAny.render = function patchedRender(...args: unknown[]): React.ReactElement {
-    if (currentFontScale === 1 && !hasFamilyRemap) {
+    if (!hasAnyScale && !hasFamilyRemap) {
       return originalRender.apply(this, args);
     }
 
@@ -54,10 +89,11 @@ export function applyGlobalFontScalePatch(): void {
 
     const override: TextStyle = {};
 
-    if (currentFontScale !== 1 && typeof flat.fontSize === 'number') {
-      override.fontSize = flat.fontSize * currentFontScale;
+    const scale = scaleForFamily(flat.fontFamily);
+    if (scale !== 1 && typeof flat.fontSize === 'number') {
+      override.fontSize = flat.fontSize * scale;
       if (typeof flat.lineHeight === 'number') {
-        override.lineHeight = flat.lineHeight * currentFontScale;
+        override.lineHeight = flat.lineHeight * scale;
       }
     }
 
