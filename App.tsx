@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useFonts } from 'expo-font';
 import AppNavigator from '@/navigation/AppNavigator';
 import { useDeviceLocation } from '@/hooks/useDeviceLocation';
+import { usePrayerAzanScheduler } from '@/hooks/usePrayerAzanScheduler';
 import { useTheme } from '@/theme';
 import { appFonts } from '@/theme/fonts';
 import {
@@ -34,6 +35,8 @@ function AppContent(): React.JSX.Element {
   const { theme } = useTheme();
   const { detectLocation } = useDeviceLocation();
   const [fontsLoaded, fontError] = useFonts(appFonts);
+
+  usePrayerAzanScheduler();
 
   // Keep the global text-scale multiplier in sync with the stored preference.
   // Reading it here re-renders AppContent (and the active screen) when it

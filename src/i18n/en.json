@@ -207,6 +207,7 @@
     "useMyLocation": "Use my current location",
     "detecting": "Detecting location…",
     "locationDenied": "Location permission denied. Pick a city below.",
+    "mapHint": "Tap the map to open in Google Maps",
     "orChooseCity": "Or choose a city",
     "account": "Account Info",
     "version": "App Version",

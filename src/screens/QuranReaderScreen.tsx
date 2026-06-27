@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   StyleSheet,
   View,
@@ -8,15 +8,17 @@ import {
   ActivityIndicator,
   Modal,
   Pressable,
+  LayoutChangeEvent,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRoute, useNavigation, RouteProp } from '@react-navigation/native';
 import { useTranslation } from '@/i18n';
-import { useAudioStore } from '@/store/useAudioStore';
+import { useAudioStore, State } from '@/store/useAudioStore';
 import { useQuranStore } from '@/store/useQuranStore';
 import { usePreferencesStore } from '@/store/usePreferencesStore';
 import { GlobalHeader } from '@/components/GlobalHeader';
 import { AudioPlayerBar } from '@/components/AudioPlayerBar';
+import { PlayingWaves } from '@/components/PlayingWaves';
 import { AyahArabic } from '@/components/AyahArabic';
 import { useSurahAyahs, useTafseerSections } from '@/hooks/useQuran';
 import { getSurahMeta } from '@/data/surahMeta';
@@ -64,6 +66,9 @@ export default function QuranReaderScreen(): React.JSX.Element {
 
   const playTrack = useAudioStore((s) => s.playTrack);
   const setQueue = useAudioStore((s) => s.setQueue);
+  const togglePlay = useAudioStore((s) => s.togglePlay);
+  const currentTrack = useAudioStore((s) => s.currentTrack);
+  const playbackState = useAudioStore((s) => s.playbackState);
 
   const bookmarks = useQuranStore((s) => s.bookmarks);
   const toggleBookmark = useQuranStore((s) => s.toggleBookmark);
@@ -81,6 +86,19 @@ export default function QuranReaderScreen(): React.JSX.Element {
   const [reciterModalOpen, setReciterModalOpen] = useState(false);
   const [readMode, setReadMode] = useState(false);
 
+  const scrollRef = useRef<ScrollView | null>(null);
+  const ayahOffsets = useRef<Record<string, number>>({});
+
+  useEffect(() => {
+    const id = currentTrack?.id;
+    if (!id) return;
+    const baseId = id.includes('::') ? id.slice(0, id.indexOf('::')) : id;
+    const y = ayahOffsets.current[baseId];
+    if (y != null) {
+      scrollRef.current?.scrollTo({ y: Math.max(0, y - 12), animated: true });
+    }
+  }, [currentTrack?.id]);
+
   const toggleTafseer = (id: string) =>
     setOpenTafseer((prev) => ({ ...prev, [id]: !prev[id] }));
 
@@ -89,6 +107,10 @@ export default function QuranReaderScreen(): React.JSX.Element {
     url: ayahAudioUrl(reciter, surahNumber, a.ayah),
     title: `${surahName} ${surahNumber}:${a.ayah}`,
     artist: reciter.name,
+    arabic: a.arabic,
+    translation: translationTextFor(a) ?? undefined,
+    subtitle: `${surahName} • ${surahNumber}:${a.ayah}`,
+    surahNumber,
   });
 
   const buildTranslationTrack = (a: QuranAyah) => ({
@@ -98,7 +120,20 @@ export default function QuranReaderScreen(): React.JSX.Element {
       language === 'ur' ? 'ترجمہ' : 'Translation'
     }`,
     artist: translationReciterFor(language).name,
+    arabic: a.arabic,
+    translation: translationTextFor(a) ?? undefined,
+    subtitle: `${surahName} • ${surahNumber}:${a.ayah} • ${
+      language === 'ur' ? 'ترجمہ' : 'Translation'
+    }`,
+    surahNumber,
   });
+
+  const isAyahPlaying = (a: QuranAyah) =>
+    (currentTrack?.id === a.id || currentTrack?.id === `${a.id}::${language}`) &&
+    (playbackState === State.Playing || playbackState === State.Buffering);
+
+  const isAyahCurrent = (a: QuranAyah) =>
+    currentTrack?.id === a.id || currentTrack?.id === `${a.id}::${language}`;
 
   const translationTextFor = (a: QuranAyah) =>
     language === 'ur' ? a.urdu : a.translation;
@@ -216,6 +251,7 @@ export default function QuranReaderScreen(): React.JSX.Element {
       </View>
 
       <ScrollView
+        ref={scrollRef}
         style={styles.scroll}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
@@ -271,7 +307,13 @@ export default function QuranReaderScreen(): React.JSX.Element {
             const translation = translationTextFor(ayah);
 
             return (
-              <View key={ayah.id} style={styles.ayahCard}>
+              <View
+                key={ayah.id}
+                style={styles.ayahCard}
+                onLayout={(e: LayoutChangeEvent) => {
+                  ayahOffsets.current[ayah.id] = e.nativeEvent.layout.y;
+                }}
+              >
                 {/* Ayah header */}
                 <View style={[styles.ayahHeader, isRTL && styles.rowRTL]}>
                   <View style={styles.ayahBadge}>
@@ -314,11 +356,19 @@ export default function QuranReaderScreen(): React.JSX.Element {
                     </TouchableOpacity>
 
                     <TouchableOpacity
-                      style={styles.playBtn}
-                      onPress={() => playAyah(ayah)}
+                      style={[styles.playBtn, isAyahCurrent(ayah) && styles.playBtnActive]}
+                      onPress={() =>
+                        isAyahCurrent(ayah) ? togglePlay() : playAyah(ayah)
+                      }
                       activeOpacity={0.7}
                     >
-                      <Text style={styles.playBtnText}>🔊</Text>
+                      {isAyahPlaying(ayah) ? (
+                        <PlayingWaves color={theme.accentGreen} height={16} />
+                      ) : (
+                        <Text style={styles.playBtnText}>
+                          {isAyahCurrent(ayah) ? '▶' : '🔊'}
+                        </Text>
+                      )}
                     </TouchableOpacity>
                   </View>
                 </View>
@@ -704,8 +754,13 @@ const createStyles = (theme: Theme) =>
     justifyContent: 'center',
     alignItems: 'center',
   },
+  playBtnActive: {
+    borderWidth: 1.5,
+    borderColor: theme.accentGreen,
+  },
   playBtnText: {
     fontSize: 16,
+    color: theme.accentGreen,
   },
   arabic: {
     fontFamily: typography.fontFamily.arabic,

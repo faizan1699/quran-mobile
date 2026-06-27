@@ -20,6 +20,7 @@ import { usePreferencesStore } from '@/store/usePreferencesStore';
 import { useDeviceLocation } from '@/hooks/useDeviceLocation';
 import { clearCache, getCacheSize, formatBytes } from '@/services/offlineCache';
 import { GlobalHeader } from '@/components/GlobalHeader';
+import { LocationMap } from '@/components/LocationMap';
 import { AppSwitch } from '@/components/AppSwitch';
 import { colors, borderRadius, spacing, typography, shadows } from '@/tokens';
 
@@ -269,6 +270,20 @@ export default function SettingsScreen(): React.JSX.Element {
           <Text style={[styles.sectionHeading, isRTL && styles.textRTL]}>
             {t('settings.location')}
           </Text>
+
+          {location ? (
+            <View style={styles.mapBlock}>
+              <LocationMap
+                latitude={location.latitude}
+                longitude={location.longitude}
+                label={location.name}
+                hint={t('settings.mapHint')}
+              />
+              <Text style={[styles.mapHint, isRTL && styles.textRTL]}>
+                {t('settings.mapHint')}
+              </Text>
+            </View>
+          ) : null}
 
           {/* GPS auto-detect */}
           <TouchableOpacity
@@ -623,6 +638,16 @@ const createStyles = (theme: Theme) =>
     },
     gridTextActive: {
       color: colors.neutral[0],
+    },
+    mapBlock: {
+      gap: spacing[2],
+      marginBottom: spacing[3],
+    },
+    mapHint: {
+      fontFamily: typography.fontFamily.english,
+      fontSize: typography.fontSize.xs,
+      color: theme.textMuted,
+      textAlign: 'center',
     },
     gpsButton: {
       flexDirection: 'row',

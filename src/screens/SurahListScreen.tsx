@@ -14,10 +14,10 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from '@/i18n';
 import { useTheme, Theme } from '@/theme';
 import { GlobalHeader } from '@/components/GlobalHeader';
-import { AudioPlayerBar } from '@/components/AudioPlayerBar';
+import { PlayingWaves } from '@/components/PlayingWaves';
 import { useSurahs } from '@/hooks/useQuran';
 import { quranService } from '@/services/quranService';
-import { useAudioStore } from '@/store/useAudioStore';
+import { useAudioStore, State } from '@/store/useAudioStore';
 import { usePreferencesStore } from '@/store/usePreferencesStore';
 import { getSurahMeta } from '@/data/surahMeta';
 import {
@@ -41,6 +41,9 @@ export default function SurahListScreen(): React.JSX.Element {
 
   const playTrack = useAudioStore((s) => s.playTrack);
   const setQueue = useAudioStore((s) => s.setQueue);
+  const togglePlay = useAudioStore((s) => s.togglePlay);
+  const currentTrack = useAudioStore((s) => s.currentTrack);
+  const playbackState = useAudioStore((s) => s.playbackState);
   const reciterId = usePreferencesStore((s) => s.reciterId);
   const playTranslation = usePreferencesStore((s) => s.playTranslation);
 
@@ -91,13 +94,17 @@ export default function SurahListScreen(): React.JSX.Element {
       });
       const name = surahName(surah.surah);
       const tracks = (ayahs ?? []).flatMap((a) => {
+        const translationText = language === 'ur' ? a.urdu : a.translation;
         const arabic = {
           id: a.id,
           url: ayahAudioUrl(reciter, surah.surah, a.ayah),
           title: `${name} ${surah.surah}:${a.ayah}`,
           artist: reciter.name,
+          arabic: a.arabic,
+          translation: translationText ?? undefined,
+          subtitle: `${name} • ${surah.surah}:${a.ayah}`,
+          surahNumber: surah.surah,
         };
-        const translationText = language === 'ur' ? a.urdu : a.translation;
         if (playTranslation && translationText) {
           return [
             arabic,
@@ -108,6 +115,12 @@ export default function SurahListScreen(): React.JSX.Element {
                 language === 'ur' ? 'ترجمہ' : 'Translation'
               }`,
               artist: translationReciterFor(language).name,
+              arabic: a.arabic,
+              translation: translationText ?? undefined,
+              subtitle: `${name} • ${surah.surah}:${a.ayah} • ${
+                language === 'ur' ? 'ترجمہ' : 'Translation'
+              }`,
+              surahNumber: surah.surah,
             },
           ];
         }
@@ -199,6 +212,12 @@ export default function SurahListScreen(): React.JSX.Element {
               const subtitle =
                 language === 'ur' ? meta?.meaningUrdu ?? '' : meta?.meaning ?? '';
 
+              const isCurrentSurah = currentTrack?.surahNumber === surah.surah;
+              const isPlayingSurah =
+                isCurrentSurah &&
+                (playbackState === State.Playing ||
+                  playbackState === State.Buffering);
+
               return (
                 <TouchableOpacity
                   key={surah.surah}
@@ -235,13 +254,17 @@ export default function SurahListScreen(): React.JSX.Element {
 
                   {/* Play full surah */}
                   <TouchableOpacity
-                    style={styles.playBtn}
-                    onPress={() => playFullSurah(surah)}
+                    style={[styles.playBtn, isPlayingSurah && styles.playBtnActive]}
+                    onPress={() =>
+                      isCurrentSurah ? togglePlay() : playFullSurah(surah)
+                    }
                     activeOpacity={0.7}
                     disabled={loadingSurah === surah.surah}
                   >
                     {loadingSurah === surah.surah ? (
                       <ActivityIndicator size="small" color={theme.accentGreen} />
+                    ) : isPlayingSurah ? (
+                      <PlayingWaves color={theme.accentGreen} height={16} />
                     ) : (
                       <Text style={styles.playIcon}>▶</Text>
                     )}
@@ -252,8 +275,6 @@ export default function SurahListScreen(): React.JSX.Element {
           </ScrollView>
         )}
       </View>
-
-      <AudioPlayerBar />
     </SafeAreaView>
   );
 }
@@ -393,6 +414,10 @@ const createStyles = (theme: Theme) =>
     backgroundColor: theme.accentSoft,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  playBtnActive: {
+    borderWidth: 1.5,
+    borderColor: theme.accentGreen,
   },
   playIcon: {
     fontSize: 14,

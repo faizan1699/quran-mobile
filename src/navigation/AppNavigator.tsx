@@ -1,8 +1,11 @@
 import React from 'react';
-import { StyleSheet } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { NavigationContainer as RawNavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import {
+  createBottomTabNavigator,
+  BottomTabBar as RawBottomTabBar,
+} from '@react-navigation/bottom-tabs';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   Ionicons as RawIonicons,
@@ -42,6 +45,8 @@ import AllahNamesScreen from '@/screens/AllahNamesScreen';
 import GuideScreen from '@/screens/GuideScreen';
 import NotesListScreen from '@/screens/NotesListScreen';
 import NoteEditorScreen from '@/screens/NoteEditorScreen';
+import PlayerScreen from '@/screens/PlayerScreen';
+import { MiniPlayer } from '@/components/MiniPlayer';
 
 // Import Token Styles
 import { typography } from '@/tokens';
@@ -120,6 +125,7 @@ type VectorIconProps = { name: string; size?: number; color?: string };
 const Ionicons = RawIonicons as unknown as React.ComponentType<VectorIconProps>;
 const MaterialCommunityIcons =
   RawMaterialCommunityIcons as unknown as React.ComponentType<VectorIconProps>;
+const BottomTabBar = RawBottomTabBar as unknown as React.ComponentType<any>;
 
 interface TabIconArgs {
   color: string;
@@ -156,6 +162,12 @@ function TabNavigator() {
     // @ts-ignore
     <Tab.Navigator
       initialRouteName="HomeStack"
+      tabBar={(props: any) => (
+        <View>
+          <MiniPlayer />
+          <BottomTabBar {...props} />
+        </View>
+      )}
       screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: theme.navActive,
@@ -254,6 +266,11 @@ export function AppNavigator(): React.JSX.Element {
         <RootStackScreen name="BookDetail" component={BookDetailScreen} />
         <RootStackScreen name="Reader" component={ReaderScreen} />
         <RootStackScreen name="QuranReader" component={QuranReaderScreen} />
+        <RootStackScreen
+          name="Player"
+          component={PlayerScreen}
+          options={{ presentation: 'fullScreenModal', animation: 'slide_from_bottom' }}
+        />
         <RootStackScreen name="NotesList" component={NotesListScreen} />
         <RootStackScreen
           name="NoteEditor"
