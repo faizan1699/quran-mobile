@@ -343,7 +343,7 @@ export const useAudioStore = create<AudioState>((set, get) => {
         : status.isBuffering
         ? PlaybackState.Buffering
         : shouldBePlaying && !status.didJustFinish
-        ? PlaybackState.Buffering
+        ? PlaybackState.Playing
         : PlaybackState.Paused,
     });
 
@@ -406,13 +406,18 @@ export const useAudioStore = create<AudioState>((set, get) => {
 
     playTrack: async (track, startSeconds = 0) => {
       try {
+        const prev = get().playbackState;
+        const continuingSession =
+          prev === PlaybackState.Playing || prev === PlaybackState.Buffering;
         shouldBePlaying = true;
         loadRetries = 0;
         set({
           currentTrack: track,
           position: startSeconds,
           duration: get().durations[track.id] || 0,
-          playbackState: PlaybackState.Buffering,
+          playbackState: continuingSession
+            ? PlaybackState.Playing
+            : PlaybackState.Buffering,
         });
 
         await ensureAudioMode();
