@@ -1,10 +1,10 @@
-import React, { useMemo } from 'react';
-import { StyleSheet, View, Text, TouchableOpacity } from 'react-native';
+import React, { useEffect, useMemo, useRef } from 'react';
+import { StyleSheet, View, Text, TouchableOpacity, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, NavigationProp } from '@react-navigation/native';
 import { useTranslation } from '@/i18n';
 import { useUserStore } from '@/store/useUserStore';
-import { useQiblaDirection } from '@/hooks/useQiblaDirection';
+import { useQiblaDirection, QiblaStatus } from '@/hooks/useQiblaDirection';
 import { colors, borderRadius, spacing, typography, shadows } from '@/tokens';
 import { RootStackParamList } from '@/navigation/types';
 
@@ -27,7 +27,7 @@ export default function QiblaScreen(): React.JSX.Element {
   const navigation = useNavigation<NavigationProp<RootStackParamList>>();
   const { t, language, isRTL } = useTranslation();
   const { location } = useUserStore();
-  const { heading, qiblaBearing, needleRotation, isEmulator } = useQiblaDirection();
+  const { heading, qiblaBearing, needleRotation, status } = useQiblaDirection();
 
   const userLat = location?.latitude ?? 21.4225;
   const userLng = location?.longitude ?? 39.8262;
@@ -35,6 +35,20 @@ export default function QiblaScreen(): React.JSX.Element {
   const distance = useMemo(() => {
     return getHaversineDistance(userLat, userLng, 21.4225, 39.8262);
   }, [userLat, userLng]);
+
+  const alertedRef = useRef<QiblaStatus | null>(null);
+
+  useEffect(() => {
+    if (status === 'checking' || alertedRef.current === status) return;
+
+    if (status === 'unavailable') {
+      alertedRef.current = status;
+      Alert.alert(t('qibla.noSensorTitle'), t('qibla.noSensor'));
+    } else if (status === 'denied') {
+      alertedRef.current = status;
+      Alert.alert(t('qibla.permissionTitle'), t('qibla.permission'));
+    }
+  }, [status, t]);
 
   return (
     <SafeAreaView edges={['top']} style={styles.safeArea}>
@@ -52,9 +66,9 @@ export default function QiblaScreen(): React.JSX.Element {
             <Text style={styles.backText}>{language === 'ur' ? 'واپس' : 'Back'}</Text>
           </TouchableOpacity>
 
-          {isEmulator && (
+          {status === 'denied' && (
             <View style={styles.emulatorBadge}>
-              <Text style={styles.emulatorText}>SIMULATING</Text>
+              <Text style={styles.emulatorText}>{language === 'ur' ? 'تخمینی' : 'APPROX'}</Text>
             </View>
           )}
         </View>
@@ -78,7 +92,13 @@ export default function QiblaScreen(): React.JSX.Element {
         {/* Center Compass Deck */}
         <View style={styles.compassDeck}>
           <Text style={styles.statusText}>
-            {isEmulator ? 'Calibrating sensors...' : t('qibla.status')}
+            {status === 'checking'
+              ? t('qibla.detecting')
+              : status === 'unavailable'
+                ? t('qibla.noSensor')
+                : status === 'denied'
+                  ? t('qibla.approximate')
+                  : t('qibla.status')}
           </Text>
 
           {/* 2D Compass Assembly */}

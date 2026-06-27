@@ -168,7 +168,13 @@
   "qibla": {
     "distance": "Distance to Mecca",
     "location": "GPS Location",
-    "status": "Qibla is calibrated correctly"
+    "status": "Point the top of your phone towards the needle",
+    "detecting": "Detecting compass sensor...",
+    "approximate": "Approximate (magnetic north)",
+    "noSensorTitle": "Compass not available",
+    "noSensor": "Your device does not have a compass (magnetometer) sensor, so the Qibla direction cannot be shown here.",
+    "permissionTitle": "Location needed for accuracy",
+    "permission": "Location permission is off. The Qibla is shown using magnetic north and may be slightly off. Enable location for the exact direction."
   },
   "tasbeeh": {
     "title": "Tasbeeh",
