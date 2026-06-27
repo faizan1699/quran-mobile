@@ -6,7 +6,10 @@ import { Image } from 'expo-image';
 import { useTranslation } from '@/i18n';
 import { useTheme, Theme } from '@/theme';
 import { GlobalHeader } from '@/components/GlobalHeader';
+import { BackButton } from '@/components/BackButton';
 import { offlineStorageService, OfflineBook, OfflineChapter } from '@/services/offlineStorageService';
+import { usePreferencesStore } from '@/store/usePreferencesStore';
+import { checkDownloadAllowed } from '@/services/networkGuard';
 import { colors, borderRadius, spacing, typography, shadows } from '@/tokens';
 import { RootStackParamList } from '@/navigation/types';
 
@@ -23,7 +26,9 @@ export default function BookDetailScreen(): React.JSX.Element {
 
   const [book, setBook] = useState<OfflineBook | null>(null);
   const [chapters, setChapters] = useState<OfflineChapter[]>([]);
-  const [isDownloaded, setIsDownloaded] = useState(bookId === 'b1'); // mock first downloaded
+  const downloadedIds = usePreferencesStore((s) => s.downloadedIds);
+  const toggleDownloaded = usePreferencesStore((s) => s.toggleDownloaded);
+  const isDownloaded = downloadedIds.includes(bookId);
 
   useEffect(() => {
     const loadData = async () => {
@@ -35,13 +40,42 @@ export default function BookDetailScreen(): React.JSX.Element {
     loadData();
   }, [bookId]);
 
-  const handleDownload = () => {
-    setIsDownloaded((prev) => !prev);
+  const handleDownload = async () => {
+    if (isDownloaded) {
+      toggleDownloaded(bookId);
+      Alert.alert(
+        language === 'ur' ? 'ہٹا دیا گیا' : 'Removed',
+        language === 'ur' ? 'آف لائن ڈیٹا حذف کر دیا گیا ہے۔' : 'Offline content removed.'
+      );
+      return;
+    }
+
+    const gate = await checkDownloadAllowed();
+    if (!gate.ok) {
+      if (gate.reason === 'cellular') {
+        Alert.alert(
+          language === 'ur' ? 'صرف وائی فائی' : 'Wi-Fi only',
+          language === 'ur'
+            ? 'ڈاؤن لوڈ صرف وائی فائی پر مجاز ہے۔ موبائل ڈیٹا پر ڈاؤن لوڈ کرنے کے لیے سیٹنگز میں ”صرف وائی فائی پر ڈاؤن لوڈ کریں“ بند کریں۔'
+            : 'Downloads are restricted to Wi-Fi. Turn off “Download over Wi-Fi only” in Settings to download on mobile data.'
+        );
+      } else {
+        Alert.alert(
+          language === 'ur' ? 'کوئی کنکشن نہیں' : 'No connection',
+          language === 'ur'
+            ? 'ڈاؤن لوڈ کے لیے انٹرنیٹ کنکشن درکار ہے۔'
+            : 'An internet connection is required to download.'
+        );
+      }
+      return;
+    }
+
+    toggleDownloaded(bookId);
     Alert.alert(
       language === 'ur' ? 'کامیاب!' : 'Success!',
-      isDownloaded
-        ? (language === 'ur' ? 'آف لائن ڈیٹا حذف کر دیا گیا ہے۔' : 'Offline content removed.')
-        : (language === 'ur' ? 'کتاب آف لائن ڈاؤن لوڈ ہو چکی ہے۔' : 'Book successfully downloaded for offline access.')
+      language === 'ur'
+        ? 'کتاب آف لائن ڈاؤن لوڈ ہو چکی ہے۔'
+        : 'Book successfully downloaded for offline access.'
     );
   };
 
@@ -72,15 +106,7 @@ export default function BookDetailScreen(): React.JSX.Element {
 
       {/* Detail Container */}
       <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
-        {/* Back navigation header */}
-        <TouchableOpacity 
-          style={[styles.backButton, isRTL && styles.backButtonRTL]} 
-          onPress={() => navigation.goBack()}
-          activeOpacity={0.7}
-        >
-          <Text style={styles.backArrow}>{isRTL ? '◀' : '◀'}</Text>
-          <Text style={styles.backText}>{language === 'ur' ? 'واپس' : 'Back'}</Text>
-        </TouchableOpacity>
+        <BackButton style={styles.backButton} />
 
         {/* Hero book card */}
         <View style={[styles.heroRow, isRTL && styles.rowRTL]}>
@@ -184,26 +210,8 @@ const createStyles = (theme: Theme) =>
     paddingBottom: spacing.sectionGap * 2,
   },
   backButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
     alignSelf: 'flex-start',
-    paddingVertical: 8,
-    paddingRight: 16,
     marginBottom: spacing[4],
-  },
-  backButtonRTL: {
-    flexDirection: 'row-reverse',
-  },
-  backArrow: {
-    fontSize: 14,
-    color: theme.textBrandGreen,
-    marginRight: 4,
-  },
-  backText: {
-    fontFamily: typography.fontFamily.english,
-    fontSize: typography.fontSize.sm,
-    color: theme.textBrandGreen,
-    fontWeight: 'bold',
   },
   heroRow: {
     flexDirection: 'row',

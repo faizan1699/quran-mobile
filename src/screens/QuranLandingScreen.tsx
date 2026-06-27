@@ -21,13 +21,22 @@ interface FeatureTile {
   icon: string;
   label: string;
   labelUrdu: string;
+  color: string;
   onPress: () => void;
   comingSoon?: boolean;
 }
 
+function hexToRgba(hex: string, alpha: number): string {
+  const h = hex.replace('#', '');
+  const r = parseInt(h.substring(0, 2), 16);
+  const g = parseInt(h.substring(2, 4), 16);
+  const b = parseInt(h.substring(4, 6), 16);
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
 export default function QuranLandingScreen(): React.JSX.Element {
   const { language, isRTL } = useTranslation();
-  const { theme } = useTheme();
+  const { theme, urduFont } = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const navigation = useNavigation<any>();
 
@@ -61,6 +70,7 @@ export default function QuranLandingScreen(): React.JSX.Element {
       icon: '📖',
       label: 'Al-Quran',
       labelUrdu: 'القرآن',
+      color: '#2D7A54',
       onPress: goToSurahList,
     },
     {
@@ -68,6 +78,7 @@ export default function QuranLandingScreen(): React.JSX.Element {
       icon: '🔖',
       label: 'Bookmarks',
       labelUrdu: 'بک مارکس',
+      color: '#C9A84C',
       onPress: () =>
         bookmarks.length > 0 ? goToSurahList() : comingSoon(),
     },
@@ -76,6 +87,7 @@ export default function QuranLandingScreen(): React.JSX.Element {
       icon: '🎧',
       label: 'Recitation',
       labelUrdu: 'تلاوت',
+      color: '#0E9488',
       onPress: comingSoon,
       comingSoon: true,
     },
@@ -84,6 +96,7 @@ export default function QuranLandingScreen(): React.JSX.Element {
       icon: '📝',
       label: 'Tafseer',
       labelUrdu: 'تفسیر',
+      color: '#5B6BD6',
       onPress: comingSoon,
       comingSoon: true,
     },
@@ -92,6 +105,7 @@ export default function QuranLandingScreen(): React.JSX.Element {
       icon: '🕋',
       label: 'Seerat un Nabi',
       labelUrdu: 'سیرت النبیﷺ',
+      color: '#B4694A',
       onPress: comingSoon,
       comingSoon: true,
     },
@@ -100,6 +114,7 @@ export default function QuranLandingScreen(): React.JSX.Element {
       icon: '🟡',
       label: 'Allah Names',
       labelUrdu: 'اسمائے حسنیٰ',
+      color: '#D4A017',
       onPress: () =>
         navigation.navigate('IbadaatStack', { screen: 'AllahNames' }),
     },
@@ -163,7 +178,7 @@ export default function QuranLandingScreen(): React.JSX.Element {
           {tiles.map((tile) => (
             <TouchableOpacity
               key={tile.key}
-              style={styles.tile}
+              style={[styles.tile, { borderColor: hexToRgba(tile.color, theme.isDark ? 0.35 : 0.18) }]}
               onPress={tile.onPress}
               activeOpacity={0.85}
             >
@@ -179,8 +194,24 @@ export default function QuranLandingScreen(): React.JSX.Element {
                   <Text style={styles.countBadgeText}>{bookmarks.length}</Text>
                 </View>
               )}
-              <Text style={styles.tileIcon}>{tile.icon}</Text>
-              <Text style={styles.tileLabel}>
+              <View
+                style={[
+                  styles.iconWrap,
+                  { backgroundColor: hexToRgba(tile.color, theme.isDark ? 0.24 : 0.14) },
+                ]}
+              >
+                <Text style={styles.tileIcon}>{tile.icon}</Text>
+              </View>
+              <Text
+                style={[
+                  styles.tileLabel,
+                  language === 'ur' && {
+                    fontFamily: urduFont,
+                    lineHeight: typography.fontSize.lg * 1.9,
+                  },
+                ]}
+                numberOfLines={1}
+              >
                 {language === 'ur' ? tile.labelUrdu : tile.label}
               </Text>
             </TouchableOpacity>
@@ -288,52 +319,63 @@ const createStyles = (theme: Theme) =>
   },
   tile: {
     width: '48%',
-    aspectRatio: 1.4,
+    aspectRatio: 1.12,
     backgroundColor: theme.bgCard,
-    borderRadius: borderRadius.card,
+    borderRadius: borderRadius['2xl'],
     borderWidth: 1,
     borderColor: theme.border,
     justifyContent: 'center',
     alignItems: 'center',
-    gap: spacing[2],
-    ...shadows.sm,
+    paddingHorizontal: spacing[3],
+    paddingVertical: spacing[4],
+    gap: spacing[3],
+    ...shadows.card,
+  },
+  iconWrap: {
+    width: 60,
+    height: 60,
+    borderRadius: borderRadius.xl,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   tileIcon: {
     fontSize: 30,
   },
   tileLabel: {
     fontFamily: typography.fontFamily.english,
-    fontSize: typography.fontSize.base,
-    fontWeight: typography.fontWeight.semibold,
+    fontSize: typography.fontSize.lg,
+    fontWeight: typography.fontWeight.bold,
     color: theme.textPrimary,
     textAlign: 'center',
   },
   soonBadge: {
     position: 'absolute',
-    top: spacing[2],
-    right: spacing[2],
-    backgroundColor: colors.gold[200],
-    borderRadius: borderRadius.badge,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
+    top: spacing[3],
+    right: spacing[3],
+    backgroundColor: theme.isDark ? 'rgba(212,185,106,0.18)' : colors.gold[200],
+    borderRadius: borderRadius.full,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
   },
   soonBadgeText: {
     fontFamily: typography.fontFamily.english,
     fontSize: 9,
     fontWeight: typography.fontWeight.bold,
-    color: colors.gold[600],
+    color: theme.isDark ? colors.gold[400] : colors.gold[600],
+    letterSpacing: typography.letterSpacing.wide,
   },
   countBadge: {
     position: 'absolute',
-    top: spacing[2],
-    right: spacing[2],
-    minWidth: 20,
-    height: 20,
-    borderRadius: 10,
+    top: spacing[3],
+    right: spacing[3],
+    minWidth: 22,
+    height: 22,
+    borderRadius: 11,
     backgroundColor: theme.accentGreen,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 5,
+    paddingHorizontal: 6,
+    ...shadows.sm,
   },
   countBadgeText: {
     fontFamily: typography.fontFamily.english,

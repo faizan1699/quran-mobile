@@ -23,6 +23,7 @@ import { useAudioStore, State } from '@/store/useAudioStore';
 import { useQuranStore } from '@/store/useQuranStore';
 import { usePreferencesStore } from '@/store/usePreferencesStore';
 import { GlobalHeader } from '@/components/GlobalHeader';
+import { BackButton } from '@/components/BackButton';
 import { AudioPlayerBar } from '@/components/AudioPlayerBar';
 import { PlayingWaves } from '@/components/PlayingWaves';
 import { AyahArabic } from '@/components/AyahArabic';
@@ -232,14 +233,7 @@ export default function QuranReaderScreen(): React.JSX.Element {
 
       <View style={styles.controlRow}>
         <View style={[styles.controlActions, isRTL && styles.rowRTL]}>
-          <TouchableOpacity
-            style={[styles.backBtn, isRTL && styles.rowRTL]}
-            onPress={() => navigation.goBack()}
-            activeOpacity={0.7}
-          >
-            <Text style={styles.backArrow}>◀</Text>
-            <Text style={styles.backText}>{language === 'ur' ? 'واپس' : 'Back'}</Text>
-          </TouchableOpacity>
+          <BackButton />
 
           <TouchableOpacity
             style={styles.reciterBtn}
@@ -611,21 +605,6 @@ const createStyles = (theme: Theme) =>
     },
     rowRTL: {
       flexDirection: 'row-reverse',
-    },
-    backBtn: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 4,
-    },
-    backArrow: {
-      fontSize: 12,
-      color: theme.textBrandGreen,
-    },
-    backText: {
-      fontFamily: typography.fontFamily.english,
-      fontSize: typography.fontSize.sm,
-      color: theme.textBrandGreen,
-      fontWeight: typography.fontWeight.bold,
     },
     controlActions: {
       flexDirection: 'row',

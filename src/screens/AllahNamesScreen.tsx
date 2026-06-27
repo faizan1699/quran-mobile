@@ -13,6 +13,7 @@ import { useNavigation, NavigationProp } from '@react-navigation/native';
 import { useTranslation } from '@/i18n';
 import { useTheme, Theme } from '@/theme';
 import { GlobalHeader } from '@/components/GlobalHeader';
+import { BackButton } from '@/components/BackButton';
 import { namesService, filterNames, DivineName } from '@/services/namesService';
 import { getNameAudioUrl } from '@/data/nameAudio';
 import { useAudioStore, PlaybackState } from '@/store/useAudioStore';
@@ -118,15 +119,7 @@ export default function AllahNamesScreen(): React.JSX.Element {
       <GlobalHeader />
 
       <View style={[styles.subHeader, isRTL && styles.rowRTL]}>
-        <TouchableOpacity
-          style={[styles.backButton, isRTL && styles.rowRTL]}
-          onPress={() => navigation.goBack()}
-          activeOpacity={0.7}
-          accessibilityLabel={language === 'ur' ? 'واپس' : 'Back'}
-        >
-          <Text style={styles.backArrow}>{isRTL ? '▶' : '◀'}</Text>
-          <Text style={styles.backText}>{language === 'ur' ? 'واپس' : 'Back'}</Text>
-        </TouchableOpacity>
+        <BackButton />
 
         <Text style={styles.title}>{t('allahNames.title')}</Text>
 
@@ -241,23 +234,6 @@ const createStyles = (theme: Theme) =>
     },
     rowRTL: {
       flexDirection: 'row-reverse',
-    },
-    backButton: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 4,
-      minWidth: 64,
-    },
-    backArrow: {
-      fontSize: 14,
-      color: theme.textBrandGreen,
-      fontWeight: 'bold',
-    },
-    backText: {
-      fontFamily: typography.fontFamily.english,
-      fontSize: typography.fontSize.sm,
-      color: theme.textBrandGreen,
-      fontWeight: typography.fontWeight.semibold,
     },
     title: {
       fontFamily: typography.fontFamily.english,
@@ -392,13 +368,14 @@ const createStyles = (theme: Theme) =>
     nameMeaning: {
       fontFamily: typography.fontFamily.english,
       fontSize: typography.fontSize.base,
+      lineHeight: typography.fontSize.base * 1.5,
       color: theme.textSecondary,
     },
     nameMeaningUrdu: {
       fontFamily: typography.fontFamily.urdu,
       textAlign: 'right',
       writingDirection: 'rtl',
-      lineHeight: 24,
+      lineHeight: typography.fontSize.base * 2,
     },
     emptyText: {
       fontFamily: typography.fontFamily.english,

@@ -7,13 +7,12 @@ import { FadeInView } from '@/components/FadeInView';
 import { DailyAyahCard } from '@/components/DailyAyahCard';
 import { HadithOfDayCard } from '@/components/HadithOfDayCard';
 import { DuaOfMomentCard } from '@/components/DuaOfMomentCard';
-import { IslamicDateCard } from '@/components/IslamicDateCard';
 import { colors, spacing, borderRadius, typography } from '@/tokens';
 
 type IconProps = { name: string; size?: number; color?: string };
 const Ionicons = RawIonicons as unknown as React.ComponentType<IconProps>;
 
-type FeatureKey = 'quran' | 'hadith' | 'dua' | 'calendar';
+type FeatureKey = 'quran' | 'hadith' | 'dua';
 
 interface FeatureTab {
   key: FeatureKey;
@@ -26,12 +25,11 @@ const TABS: FeatureTab[] = [
   { key: 'quran', labelKey: 'tabs.quran', icon: 'book-outline', iconActive: 'book' },
   { key: 'hadith', labelKey: 'tabs.hadith', icon: 'library-outline', iconActive: 'library' },
   { key: 'dua', labelKey: 'tabs.duaa', icon: 'hand-left-outline', iconActive: 'hand-left' },
-  { key: 'calendar', labelKey: 'tabs.calendar', icon: 'calendar-outline', iconActive: 'calendar' },
 ];
 
 /**
  * Islam360-style feature switcher: a row of category toggles whose selection
- * swaps the content card shown below (Quran ayah / Hadith / Dua / Islamic date).
+ * swaps the content card shown below (Quran ayah / Hadith / Dua).
  */
 export function HomeFeatureTabs(): React.JSX.Element {
   const { t, isRTL } = useTranslation();
@@ -73,7 +71,6 @@ export function HomeFeatureTabs(): React.JSX.Element {
         {active === 'quran' && <DailyAyahCard />}
         {active === 'hadith' && <HadithOfDayCard />}
         {active === 'dua' && <DuaOfMomentCard />}
-        {active === 'calendar' && <IslamicDateCard />}
       </FadeInView>
     </View>
   );

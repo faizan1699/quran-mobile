@@ -148,8 +148,10 @@
     "ayahDay": "Ayah of the Day",
     "prayerTimes": "Prayer Times",
     "currentLocation": "Current Location",
+    "tapToSetLocation": "Tap to set your location",
     "calcSettings": "Calculation settings",
     "hadithOfDay": "Hadith of the Day",
+    "flashes": "Flashes",
     "quickLinks": "Quick Links",
     "share": "Share",
     "calculationMethod": "Calculation Method"

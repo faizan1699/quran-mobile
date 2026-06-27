@@ -5,6 +5,7 @@ import { useNavigation, useRoute, RouteProp, NavigationProp } from '@react-navig
 import { useTranslation } from '@/i18n';
 import { useTheme, Theme } from '@/theme';
 import { GlobalHeader } from '@/components/GlobalHeader';
+import { BackButton } from '@/components/BackButton';
 import { guides } from '@/data/guides';
 import { colors, borderRadius, spacing, typography, shadows } from '@/tokens';
 import { RootStackParamList, IbadaatStackParamList } from '@/navigation/types';
@@ -23,19 +24,11 @@ export default function GuideScreen(): React.JSX.Element {
       <GlobalHeader />
 
       <View style={[styles.subHeader, isRTL && styles.rowRTL]}>
-        <TouchableOpacity
-          style={[styles.backButton, isRTL && styles.rowRTL]}
-          onPress={() => navigation.goBack()}
-          activeOpacity={0.7}
-          accessibilityLabel={language === 'ur' ? 'واپس' : 'Back'}
-        >
-          <Text style={styles.backArrow}>{isRTL ? '▶' : '◀'}</Text>
-          <Text style={styles.backText}>{language === 'ur' ? 'واپس' : 'Back'}</Text>
-        </TouchableOpacity>
+        <BackButton />
 
         <Text style={styles.title}>{language === 'ur' ? guide.titleUr : guide.title}</Text>
 
-        <View style={styles.backButton} />
+        <View style={styles.headerSpacer} />
       </View>
 
       <ScrollView
@@ -112,22 +105,8 @@ const createStyles = (theme: Theme) =>
     textRTL: {
       textAlign: 'right',
     },
-    backButton: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 4,
-      minWidth: 64,
-    },
-    backArrow: {
-      fontSize: 14,
-      color: theme.textBrandGreen,
-      fontWeight: 'bold',
-    },
-    backText: {
-      fontFamily: typography.fontFamily.english,
-      fontSize: typography.fontSize.sm,
-      color: theme.textBrandGreen,
-      fontWeight: typography.fontWeight.semibold,
+    headerSpacer: {
+      width: 40,
     },
     title: {
       fontFamily: typography.fontFamily.english,

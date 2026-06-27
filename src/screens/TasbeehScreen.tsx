@@ -13,6 +13,7 @@ import { useNavigation, NavigationProp } from '@react-navigation/native';
 import { useTranslation } from '@/i18n';
 import { useTheme, Theme } from '@/theme';
 import { GlobalHeader } from '@/components/GlobalHeader';
+import { BackButton } from '@/components/BackButton';
 import { useTasbeehStore } from '@/store/useTasbeehStore';
 import { adhkar } from '@/data/adhkar';
 import { colors, borderRadius, spacing, typography, shadows } from '@/tokens';

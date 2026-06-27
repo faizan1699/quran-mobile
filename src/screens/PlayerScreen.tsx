@@ -141,9 +141,10 @@ export default function PlayerScreen(): React.JSX.Element | null {
           onPress={minimize}
           activeOpacity={0.7}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          accessibilityRole="button"
+          accessibilityLabel={isUrdu ? 'چھوٹا کریں' : 'Minimize'}
         >
-          <Text style={styles.headerChevron}>⌄</Text>
-          <Text style={styles.headerBtnText}>{isUrdu ? 'چھوٹا کریں' : 'Minimize'}</Text>
+          <Icon name="chevron-down" size={24} color={theme.textPrimary} />
         </TouchableOpacity>
 
         <Text style={styles.headerTitle}>{isUrdu ? 'ابھی چل رہا ہے' : 'Now Playing'}</Text>
@@ -153,8 +154,10 @@ export default function PlayerScreen(): React.JSX.Element | null {
           onPress={close}
           activeOpacity={0.7}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          accessibilityRole="button"
+          accessibilityLabel={isUrdu ? 'بند کریں' : 'Close'}
         >
-          <Text style={styles.headerClose}>✕</Text>
+          <Icon name="close" size={22} color={theme.textPrimary} />
         </TouchableOpacity>
       </View>
 
@@ -338,21 +341,14 @@ const createStyles = (theme: Theme) =>
       borderBottomColor: theme.borderDivider,
     },
     headerBtn: {
-      flexDirection: 'row',
+      width: 40,
+      height: 40,
+      borderRadius: borderRadius.xl,
       alignItems: 'center',
-      gap: 4,
-      minWidth: 90,
-    },
-    headerChevron: {
-      fontSize: 20,
-      color: theme.textBrandGreen,
-      lineHeight: 20,
-    },
-    headerBtnText: {
-      fontFamily: typography.fontFamily.english,
-      fontSize: typography.fontSize.sm,
-      fontWeight: typography.fontWeight.bold,
-      color: theme.textBrandGreen,
+      justifyContent: 'center',
+      backgroundColor: theme.bgMuted,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: theme.border,
     },
     headerTitle: {
       fontFamily: typography.fontFamily.english,
@@ -360,12 +356,6 @@ const createStyles = (theme: Theme) =>
       fontWeight: typography.fontWeight.bold,
       color: theme.textSecondary,
       letterSpacing: 0.5,
-    },
-    headerClose: {
-      fontSize: 20,
-      color: theme.textSecondary,
-      textAlign: 'right',
-      minWidth: 90,
     },
     body: {
       flex: 1,

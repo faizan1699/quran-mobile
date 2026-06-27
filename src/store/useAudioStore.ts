@@ -299,14 +299,21 @@ export const useAudioStore = create<AudioState>((set, get) => {
       }
       const { queue, currentTrack } = get();
       const idx = currentTrack ? queue.findIndex((t) => t.id === currentTrack.id) : -1;
+      const stopHere = () => {
+        shouldBePlaying = false;
+        clearLoadWatchdog();
+        set({ playbackState: PlaybackState.Paused });
+      };
       if (idx >= 0 && idx < queue.length - 1) {
-        await get().skipToNext();
+        if (usePreferencesStore.getState().autoPlayNextAyah) {
+          await get().skipToNext();
+        } else {
+          stopHere();
+        }
       } else {
         const advanced = await maybeAutoAdvanceSurah();
         if (!advanced) {
-          shouldBePlaying = false;
-          clearLoadWatchdog();
-          set({ playbackState: PlaybackState.Paused });
+          stopHere();
         }
       }
     } finally {

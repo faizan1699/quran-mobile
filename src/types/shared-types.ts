@@ -364,3 +364,15 @@ export interface AnalyticsOverview {
   activeAdmins: number;
   appUsage: number;
 }
+
+export interface Flash {
+  id: string;
+  title: string | null;
+  imageUrl: string;
+  startsAt: string | null;
+  endsAt: string | null;
+  sortOrder: number;
+  active: boolean;
+  createdAt: string;
+  updatedAt: string;
+}

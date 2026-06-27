@@ -6,6 +6,7 @@ import { useTranslation } from '@/i18n';
 import { useTheme, Theme } from '@/theme';
 import { GlobalHeader } from '@/components/GlobalHeader';
 import { FlashesCarousel } from '@/components/FlashesCarousel';
+import { FlashBannerCarousel } from '@/components/FlashBannerCarousel';
 import { FadeInView } from '@/components/FadeInView';
 import { HeroDateBar } from '@/components/HeroDateBar';
 import { HomeFeatureTabs } from '@/components/HomeFeatureTabs';
@@ -88,7 +89,11 @@ export default function HomeScreen(): React.JSX.Element {
           <FlashesCarousel onFlashPress={handleFlashPress} />
         </FadeInView>
 
-        {/* Feature switcher: Quran / Hadith / Dua / Calendar */}
+        <FadeInView style={styles.section} delay={120} offsetY={12}>
+          <FlashBannerCarousel />
+        </FadeInView>
+
+        {/* Feature switcher: Quran / Hadith / Dua */}
         <FadeInView style={styles.section} delay={160}>
           <HomeFeatureTabs />
         </FadeInView>
