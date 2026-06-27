@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import {
   StyleSheet,
   View,
@@ -11,14 +11,14 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons as RawIonicons } from '@expo/vector-icons';
 import { useQueryClient } from '@tanstack/react-query';
-import { useNavigation, NavigationProp } from '@react-navigation/native';
+import { useNavigation, NavigationProp, useFocusEffect } from '@react-navigation/native';
 import { useTranslation } from '@/i18n';
 import { useTheme, Theme } from '@/theme';
 import { RootStackParamList, MoreStackParamList } from '@/navigation/types';
 import { useUserStore, FiqhMethod, LocationData } from '@/store/useUserStore';
 import { usePreferencesStore } from '@/store/usePreferencesStore';
 import { useDeviceLocation } from '@/hooks/useDeviceLocation';
-import { clearCache } from '@/services/offlineCache';
+import { clearCache, getCacheSize, formatBytes } from '@/services/offlineCache';
 import { GlobalHeader } from '@/components/GlobalHeader';
 import { AppSwitch } from '@/components/AppSwitch';
 import { colors, borderRadius, spacing, typography, shadows } from '@/tokens';
@@ -91,6 +91,20 @@ export default function SettingsScreen(): React.JSX.Element {
     setPref,
   } = usePreferencesStore();
 
+  const [cacheBytes, setCacheBytes] = useState<number | null>(null);
+
+  const loadCacheSize = useCallback(() => {
+    getCacheSize()
+      .then(setCacheBytes)
+      .catch(() => setCacheBytes(null));
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadCacheSize();
+    }, [loadCacheSize])
+  );
+
   const handleClearCache = () => {
     Alert.alert(
       t('settings.clearCache'),
@@ -103,6 +117,7 @@ export default function SettingsScreen(): React.JSX.Element {
           onPress: async () => {
             queryClient.clear();
             await clearCache();
+            setCacheBytes(0);
             Alert.alert(t('settings.cacheCleared'), t('settings.cacheClearedDesc'));
           },
         },
@@ -391,6 +406,11 @@ export default function SettingsScreen(): React.JSX.Element {
                 {t('settings.clearCacheDesc')}
               </Text>
             </View>
+            {cacheBytes === null ? (
+              <ActivityIndicator size="small" color={theme.textMuted} />
+            ) : (
+              <Text style={styles.cacheSizeBadge}>{formatBytes(cacheBytes)}</Text>
+            )}
             <Ionicons
               name={isRTL ? 'chevron-back' : 'chevron-forward'}
               size={16}
@@ -534,6 +554,17 @@ const createStyles = (theme: Theme) =>
       fontSize: typography.fontSize.xs,
       color: theme.textSecondary,
       marginTop: 2,
+    },
+    cacheSizeBadge: {
+      fontFamily: typography.fontFamily.english,
+      fontSize: typography.fontSize.sm,
+      fontWeight: typography.fontWeight.semibold,
+      color: theme.textBrandGreen,
+      backgroundColor: theme.isDark ? 'rgba(58,158,110,0.15)' : theme.accentSoft,
+      borderRadius: borderRadius.full,
+      paddingVertical: 4,
+      paddingHorizontal: spacing[2],
+      overflow: 'hidden',
     },
     optionsRow: {
       flexDirection: 'row',

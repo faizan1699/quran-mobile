@@ -24,27 +24,4 @@ export const ACCENT_PRESETS: string[] = [
   '#D97706',
 ];
 
-export const BACKGROUND_PRESETS: string[] = [
-  '#FFFFFF',
-  '#FAFAFA',
-  '#FBF7EF',
-  '#F1F5F9',
-  '#F0FDF4',
-  '#DCFCE7',
-  '#BBF7D0',
-  '#FEF2F2',
-  '#FEE2E2',
-  '#FECACA',
-  '#EFF6FF',
-  '#DBEAFE',
-  '#BFDBFE',
-  '#FEF3C7',
-  '#FFEDD5',
-  '#0B2017',
-  '#0B1410',
-  '#0A1A2F',
-  '#0F172A',
-  '#1E293B',
-  '#1C1C1E',
-  '#000000',
-];
+export const BACKGROUND_PRESETS: string[] = [...ACCENT_PRESETS];

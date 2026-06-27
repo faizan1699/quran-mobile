@@ -122,7 +122,10 @@
   },
   "quran": {
     "searchSurah": "Search surah…",
-    "playSurah": "Play",
+    "filterAll": "All",
+    "filterMakki": "Makki",
+    "filterMadani": "Madani",
+    "playSurah": "Play full surah",
     "reciter": "Reciter",
     "chooseReciter": "Choose Reciter",
     "translation": "Translation",
@@ -174,7 +177,12 @@
     "noSensorTitle": "Compass not available",
     "noSensor": "Your device does not have a compass (magnetometer) sensor, so the Qibla direction cannot be shown here.",
     "permissionTitle": "Location needed for accuracy",
-    "permission": "Location permission is off. The Qibla is shown using magnetic north and may be slightly off. Enable location for the exact direction."
+    "permission": "Location permission is off. The Qibla is shown using magnetic north and may be slightly off. Enable location for the exact direction.",
+    "qiblaDirection": "Qibla Direction",
+    "heading": "Heading",
+    "aligned": "You're facing the Qibla",
+    "turnRight": "Turn slightly right",
+    "turnLeft": "Turn slightly left"
   },
   "tasbeeh": {
     "title": "Tasbeeh",

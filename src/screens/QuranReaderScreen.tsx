@@ -159,18 +159,17 @@ export default function QuranReaderScreen(): React.JSX.Element {
     <SafeAreaView edges={['top', 'bottom']} style={styles.safeArea}>
       <GlobalHeader />
 
-      {/* Control / nav bar */}
-      <View style={[styles.controlRow, isRTL && styles.rowRTL]}>
-        <TouchableOpacity
-          style={[styles.backBtn, isRTL && styles.rowRTL]}
-          onPress={() => navigation.goBack()}
-          activeOpacity={0.7}
-        >
-          <Text style={styles.backArrow}>◀</Text>
-          <Text style={styles.backText}>{language === 'ur' ? 'واپس' : 'Back'}</Text>
-        </TouchableOpacity>
-
+      <View style={styles.controlRow}>
         <View style={[styles.controlActions, isRTL && styles.rowRTL]}>
+          <TouchableOpacity
+            style={[styles.backBtn, isRTL && styles.rowRTL]}
+            onPress={() => navigation.goBack()}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.backArrow}>◀</Text>
+            <Text style={styles.backText}>{language === 'ur' ? 'واپس' : 'Back'}</Text>
+          </TouchableOpacity>
+
           <TouchableOpacity
             style={styles.reciterBtn}
             onPress={() => setReciterModalOpen(true)}
@@ -205,10 +204,15 @@ export default function QuranReaderScreen(): React.JSX.Element {
               {language === 'ur' ? 'مطالعہ' : 'Read'}
             </Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.playSurahBtn} onPress={playSurah} activeOpacity={0.8}>
-            <Text style={styles.playSurahText}>▶ {t('quran.playSurah')}</Text>
-          </TouchableOpacity>
         </View>
+
+        <TouchableOpacity
+          style={styles.playSurahBtn}
+          onPress={playSurah}
+          activeOpacity={0.85}
+        >
+          <Text style={styles.playSurahText}>▶  {t('quran.playSurah')}</Text>
+        </TouchableOpacity>
       </View>
 
       <ScrollView
@@ -450,9 +454,9 @@ const createStyles = (theme: Theme) =>
     backgroundColor: theme.bgPage,
   },
   controlRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: 'column',
+    alignItems: 'stretch',
+    gap: spacing[2],
     paddingHorizontal: spacing.pagePadding,
     paddingVertical: spacing.cardGap,
     backgroundColor: theme.bgCard,
@@ -479,6 +483,7 @@ const createStyles = (theme: Theme) =>
   },
   controlActions: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     alignItems: 'center',
     gap: spacing[2],
   },
@@ -532,14 +537,17 @@ const createStyles = (theme: Theme) =>
     color: colors.neutral[0],
   },
   playSurahBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
     backgroundColor: theme.accentGreen,
     borderRadius: borderRadius.button,
     paddingHorizontal: spacing[3],
-    paddingVertical: 6,
+    paddingVertical: spacing[2] + 2,
   },
   playSurahText: {
     fontFamily: typography.fontFamily.english,
-    fontSize: typography.fontSize.xs,
+    fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.bold,
     color: colors.neutral[0],
   },
