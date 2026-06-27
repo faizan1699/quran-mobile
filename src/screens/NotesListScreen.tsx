@@ -15,6 +15,7 @@ import {
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons as RawIonicons } from '@expo/vector-icons';
 import { useTranslation } from '@/i18n';
+import { BackButton } from '@/components/BackButton';
 import { useTheme, Theme } from '@/theme';
 import { colors, spacing, borderRadius, typography, shadows } from '@/tokens';
 import { RootStackParamList } from '@/navigation/types';
@@ -189,18 +190,7 @@ export default function NotesListScreen(): React.JSX.Element {
   return (
     <SafeAreaView edges={['top', 'bottom']} style={styles.safeArea}>
       <View style={[styles.header, isRTL && styles.rowRTL]}>
-        <TouchableOpacity
-          style={styles.backBtn}
-          onPress={() => navigation.goBack()}
-          activeOpacity={0.7}
-          accessibilityLabel={t('notes.back')}
-        >
-          <Ionicons
-            name={isRTL ? 'chevron-forward' : 'chevron-back'}
-            size={22}
-            color={theme.textPrimary}
-          />
-        </TouchableOpacity>
+        <BackButton />
         <Text style={styles.headerTitle}>{t('notes.title')}</Text>
         <View style={styles.backBtn} />
       </View>
@@ -282,10 +272,8 @@ const createStyles = (theme: Theme) =>
       borderBottomColor: theme.borderDivider,
     },
     backBtn: {
-      width: 36,
-      height: 36,
-      justifyContent: 'center',
-      alignItems: 'center',
+      width: 40,
+      height: 40,
     },
     headerTitle: {
       fontFamily: typography.fontFamily.english,

@@ -11,6 +11,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, NavigationProp } from '@react-navigation/native';
 import { Ionicons as RawIonicons } from '@expo/vector-icons';
 import { useTranslation } from '@/i18n';
+import { BackButton } from '@/components/BackButton';
 import { useTheme, ThemeMode, Theme } from '@/theme';
 import { useUserStore } from '@/store/useUserStore';
 import { usePreferencesStore } from '@/store/usePreferencesStore';
@@ -100,17 +101,7 @@ export default function ProfileScreen(): React.JSX.Element {
     <SafeAreaView edges={['top', 'bottom']} style={styles.safeArea}>
       {/* Top bar */}
       <View style={[styles.topBar, isRTL && styles.rowRTL]}>
-        <TouchableOpacity
-          style={styles.iconButton}
-          onPress={() => navigation.goBack()}
-          activeOpacity={0.7}
-        >
-          <Ionicons
-            name={isRTL ? 'chevron-forward' : 'chevron-back'}
-            size={24}
-            color={theme.textPrimary}
-          />
-        </TouchableOpacity>
+        <BackButton />
         <Text style={styles.topBarTitle}>{t('profile.title')}</Text>
         <View style={styles.iconButton} />
       </View>

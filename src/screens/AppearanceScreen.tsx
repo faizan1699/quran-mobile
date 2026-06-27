@@ -14,6 +14,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons as RawIonicons } from '@expo/vector-icons';
 import { useNavigation, NavigationProp } from '@react-navigation/native';
 import { useTranslation } from '@/i18n';
+import { BackButton } from '@/components/BackButton';
 import { useTheme, Theme, ThemeMode } from '@/theme';
 import { ACCENT_PRESETS, BACKGROUND_PRESETS } from '@/theme/appearancePresets';
 import { normalizeHex, isValidHex, readableText } from '@/theme/colorUtils';
@@ -297,18 +298,7 @@ export default function AppearanceScreen(): React.JSX.Element {
         contentContainerStyle={styles.contentContainer}
         showsVerticalScrollIndicator={false}
       >
-        <TouchableOpacity
-          style={[styles.backButton, isRTL && styles.rowRTL]}
-          onPress={() => navigation.goBack()}
-          activeOpacity={0.7}
-        >
-          <Ionicons
-            name={isRTL ? 'chevron-forward' : 'chevron-back'}
-            size={18}
-            color={theme.textBrandGreen}
-          />
-          <Text style={styles.backText}>{t('settings.title')}</Text>
-        </TouchableOpacity>
+        <BackButton showLabel label={t('settings.title')} style={styles.backButton} />
 
         <Text style={[styles.screenTitle, isRTL && styles.textRTL]}>
           {t('theme.appearance')}
@@ -719,17 +709,7 @@ const createStyles = (theme: Theme) =>
       gap: spacing.cardGap,
     },
     backButton: {
-      flexDirection: 'row',
-      alignItems: 'center',
       alignSelf: 'flex-start',
-      gap: 2,
-      paddingVertical: 4,
-    },
-    backText: {
-      fontFamily: typography.fontFamily.english,
-      fontSize: typography.fontSize.sm,
-      color: theme.textBrandGreen,
-      fontWeight: 'bold',
     },
     screenTitle: {
       fontFamily: typography.fontFamily.english,
