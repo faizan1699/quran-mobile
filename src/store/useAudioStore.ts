@@ -9,12 +9,7 @@ import {
 import * as Speech from 'expo-speech';
 import { TimedWord, QuranAyah } from '@shared-types';
 import { quranService } from '@/services/quranService';
-import {
-  getReciter,
-  ayahAudioUrl,
-  translationAudioUrl,
-  translationReciterFor,
-} from '@/data/reciters';
+import { getReciter, ayahAudioUrl } from '@/data/reciters';
 import { getSurahMeta } from '@/data/surahMeta';
 import { usePreferencesStore } from '@/store/usePreferencesStore';
 import { useUserStore } from '@/store/useUserStore';
@@ -216,16 +211,20 @@ async function buildSurahTracks(surahNumber: number): Promise<AudioTrackInfo[]> 
       surahNumber,
     });
 
-    if (playTranslation && translationTextFor(a)) {
+    const translationText = translationTextFor(a);
+    if (playTranslation && translationText) {
       tracks.push({
         id: `${a.id}::${language}`,
-        url: translationAudioUrl(surahNumber, a.ayah, language),
+        url: '',
         title: `${surahName} ${surahNumber}:${a.ayah} — ${translationLabel}`,
-        artist: translationReciterFor(language).name,
+        artist: language === 'ur' ? 'اردو ترجمہ (آواز)' : 'Translation (Voice)',
         arabic: a.arabic,
-        translation: translationTextFor(a) ?? undefined,
+        translation: translationText,
         subtitle: `${surahName} • ${surahNumber}:${a.ayah} • ${translationLabel}`,
         surahNumber,
+        tts: true,
+        ttsLang: language === 'ur' ? 'ur' : 'en-US',
+        ttsText: translationText,
       });
     }
   }
@@ -236,7 +235,16 @@ async function buildSurahTracks(surahNumber: number): Promise<AudioTrackInfo[]> 
 export const useAudioStore = create<AudioState>((set, get) => {
 
   const prefetchDurations = async (tracks: AudioTrackInfo[]) => {
-    const todo = tracks.filter((t) => !(get().durations[t.id] > 0));
+    const ttsTracks = tracks.filter((t) => t.tts && !(get().durations[t.id] > 0));
+    if (ttsTracks.length > 0) {
+      const rate = get().playbackRate;
+      const next = { ...get().durations };
+      for (const t of ttsTracks) {
+        next[t.id] = estimateTtsSeconds(ttsTextOf(t) || ' ', rate);
+      }
+      set({ durations: next });
+    }
+    const todo = tracks.filter((t) => !t.tts && !(get().durations[t.id] > 0));
     const CONCURRENCY = Platform.OS === 'web' ? 6 : 2;
     for (let i = 0; i < todo.length; i += CONCURRENCY) {
       const batch = todo.slice(i, i + CONCURRENCY);
@@ -525,6 +533,22 @@ export const useAudioStore = create<AudioState>((set, get) => {
     togglePlay: async () => {
       try {
         const { currentTrack, playbackState } = get();
+        if (currentTrack?.tts) {
+          if (playbackState === PlaybackState.Playing) {
+            shouldBePlaying = false;
+            continuousAdvance = false;
+            clearTtsTimer();
+            try {
+              Speech.stop();
+            } catch {}
+            set({ playbackState: PlaybackState.Paused });
+          } else {
+            shouldBePlaying = true;
+            await ensureAudioMode();
+            startTts(currentTrack);
+          }
+          return;
+        }
         if (!player) {
           if (currentTrack) await get().playTrack(currentTrack, get().position);
           return;
@@ -721,6 +745,13 @@ if (typeof module !== 'undefined' && module?.hot) {
       player?.pause();
       player?.remove();
     } catch {}
+    try {
+      Speech.stop();
+    } catch {}
+    if (ttsTimer) {
+      clearInterval(ttsTimer);
+      ttsTimer = null;
+    }
     if (loadWatchdog) {
       clearTimeout(loadWatchdog);
       loadWatchdog = null;

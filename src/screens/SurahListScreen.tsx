@@ -21,12 +21,7 @@ import { quranService } from '@/services/quranService';
 import { useAudioStore, State } from '@/store/useAudioStore';
 import { usePreferencesStore } from '@/store/usePreferencesStore';
 import { getSurahMeta } from '@/data/surahMeta';
-import {
-  getReciter,
-  ayahAudioUrl,
-  translationAudioUrl,
-  translationReciterFor,
-} from '@/data/reciters';
+import { getReciter, ayahAudioUrl } from '@/data/reciters';
 import { colors, spacing, typography, borderRadius, shadows } from '@/tokens';
 import { QuranAyah, QuranSurahSummary } from '@shared-types';
 
@@ -111,17 +106,20 @@ export default function SurahListScreen(): React.JSX.Element {
             arabic,
             {
               id: `${a.id}::${language}`,
-              url: translationAudioUrl(surah.surah, a.ayah, language),
+              url: '',
               title: `${name} ${surah.surah}:${a.ayah} — ${
                 language === 'ur' ? 'ترجمہ' : 'Translation'
               }`,
-              artist: translationReciterFor(language).name,
+              artist: language === 'ur' ? 'اردو ترجمہ (آواز)' : 'Translation (Voice)',
               arabic: a.arabic,
               translation: translationText ?? undefined,
               subtitle: `${name} • ${surah.surah}:${a.ayah} • ${
                 language === 'ur' ? 'ترجمہ' : 'Translation'
               }`,
               surahNumber: surah.surah,
+              tts: true,
+              ttsLang: language === 'ur' ? 'ur' : 'en-US',
+              ttsText: translationText ?? undefined,
             },
           ];
         }

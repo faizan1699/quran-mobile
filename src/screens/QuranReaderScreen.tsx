@@ -31,13 +31,7 @@ import { AyahArabic } from '@/components/AyahArabic';
 import { useShareSheet } from '@/components/share/ShareProvider';
 import { useSurahAyahs, useTafseerSections } from '@/hooks/useQuran';
 import { getSurahMeta } from '@/data/surahMeta';
-import {
-  RECITERS,
-  getReciter,
-  ayahAudioUrl,
-  translationAudioUrl,
-  translationReciterFor,
-} from '@/data/reciters';
+import { RECITERS, getReciter, ayahAudioUrl } from '@/data/reciters';
 import { useTheme, Theme } from '@/theme';
 import { colors, spacing, typography, borderRadius, shadows } from '@/tokens';
 import { RootStackParamList } from '@/navigation/types';
@@ -153,15 +147,18 @@ export default function QuranReaderScreen(): React.JSX.Element {
 
   const buildTranslationTrack = (a: QuranAyah) => ({
     id: `${a.id}::${language}`,
-    url: translationAudioUrl(surahNumber, a.ayah, language),
+    url: '',
     title: `${surahName} ${surahNumber}:${a.ayah} — ${language === 'ur' ? 'ترجمہ' : 'Translation'
       }`,
-    artist: translationReciterFor(language).name,
+    artist: language === 'ur' ? 'اردو ترجمہ (آواز)' : 'Translation (Voice)',
     arabic: a.arabic,
     translation: translationTextFor(a) ?? undefined,
     subtitle: `${surahName} • ${surahNumber}:${a.ayah} • ${language === 'ur' ? 'ترجمہ' : 'Translation'
       }`,
     surahNumber,
+    tts: true,
+    ttsLang: language === 'ur' ? 'ur' : 'en-US',
+    ttsText: translationTextFor(a) ?? undefined,
   });
 
   const isAyahPlaying = (a: QuranAyah) =>
