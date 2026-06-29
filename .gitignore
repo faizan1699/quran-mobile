@@ -80,8 +80,10 @@ web-build/
 
 # Environment (keep .env.example)
 .env
+.env.*
 .env.local
-.env*.local
+.env.*.local
+!.env.example
 
 # TypeScript
 *.tsbuildinfo
