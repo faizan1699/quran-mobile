@@ -6,6 +6,7 @@ import {
   AudioPlayer,
   AudioStatus,
 } from 'expo-audio';
+import * as Speech from 'expo-speech';
 import { TimedWord, QuranAyah } from '@shared-types';
 import { quranService } from '@/services/quranService';
 import {
@@ -40,6 +41,9 @@ interface AudioTrackInfo {
   translation?: string;
   subtitle?: string;
   words?: TimedWord[];
+  tts?: boolean;
+  ttsLang?: string;
+  ttsText?: string;
 }
 
 interface AudioState {
@@ -83,9 +87,27 @@ let loadWatchdog: ReturnType<typeof setTimeout> | null = null;
 let loadRetries = 0;
 let lastTrack: AudioTrackInfo | null = null;
 let lastStartSeconds = 0;
+let ttsTimer: ReturnType<typeof setInterval> | null = null;
 
 const LOAD_TIMEOUT_MS = 9000;
 const MAX_LOAD_RETRIES = 2;
+
+function ttsTextOf(track: AudioTrackInfo): string {
+  return (track.ttsText || track.translation || '').trim();
+}
+
+function estimateTtsSeconds(text: string, rate: number): number {
+  const words = text.trim().split(/\s+/).filter(Boolean).length;
+  const base = Math.max(2, words / 2.2);
+  return base / (rate > 0 ? rate : 1);
+}
+
+function clearTtsTimer(): void {
+  if (ttsTimer) {
+    clearInterval(ttsTimer);
+    ttsTimer = null;
+  }
+}
 
 function fetchWebDurationSeconds(url: string): Promise<number> {
   return new Promise((resolve) => {
@@ -250,6 +272,10 @@ export const useAudioStore = create<AudioState>((set, get) => {
 
   const teardownPlayer = () => {
     clearLoadWatchdog();
+    clearTtsTimer();
+    try {
+      Speech.stop();
+    } catch {}
     if (statusSub) {
       try {
         statusSub.remove();
@@ -392,10 +418,65 @@ export const useAudioStore = create<AudioState>((set, get) => {
     }, LOAD_TIMEOUT_MS);
   };
 
+  const startTts = (track: AudioTrackInfo) => {
+    const text = ttsTextOf(track);
+    const rate = get().playbackRate;
+    const estimated = estimateTtsSeconds(text || ' ', rate);
+    const durations = get().durations;
+    set({
+      position: 0,
+      duration: estimated,
+      playbackState: PlaybackState.Playing,
+      ...(durations[track.id] !== estimated
+        ? { durations: { ...durations, [track.id]: estimated } }
+        : {}),
+    });
+
+    if (!text) {
+      void handleTrackFinished();
+      return;
+    }
+
+    const advanceOnce = () => {
+      if (get().currentTrack?.id === track.id) {
+        void handleTrackFinished();
+      }
+    };
+
+    try {
+      Speech.stop();
+      Speech.speak(text, {
+        language: track.ttsLang || 'ur',
+        rate,
+        onDone: advanceOnce,
+        onError: advanceOnce,
+      });
+    } catch {
+      void handleTrackFinished();
+      return;
+    }
+
+    clearTtsTimer();
+    ttsTimer = setInterval(() => {
+      const state = get();
+      if (!state.currentTrack || state.currentTrack.id !== track.id) {
+        clearTtsTimer();
+        return;
+      }
+      const next = Math.min(estimated, state.position + 0.25);
+      set({ position: next });
+      if (next >= estimated) clearTtsTimer();
+    }, 250);
+  };
+
   const startPlayback = (track: AudioTrackInfo, startSeconds: number) => {
     teardownPlayer();
     lastTrack = track;
     lastStartSeconds = startSeconds;
+    if (track.tts) {
+      startTts(track);
+      return;
+    }
     pendingSeekSeconds = startSeconds > 0 ? startSeconds : 0;
     player = createAudioPlayer({ uri: track.url }, { updateInterval: 100 });
     statusSub = player.addListener('playbackStatusUpdate', onPlaybackStatusUpdate);
