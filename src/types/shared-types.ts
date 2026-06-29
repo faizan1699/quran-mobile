@@ -79,6 +79,7 @@ export interface Book {
   personalityId?: string | null;
   category: BookCategory;
   coverImage?: string | null;
+  fileUrl?: string | null;
   status: ContentStatus;
   sequence: number;
   createdAt: string;
@@ -231,6 +232,7 @@ export interface CreateBookDto {
   personalityId?: string;
   category: BookCategory;
   coverImage?: string;
+  fileUrl?: string;
   status?: ContentStatus;
   sequence?: number;
 }
