@@ -21,7 +21,7 @@ import { quranService } from '@/services/quranService';
 import { useAudioStore, State } from '@/store/useAudioStore';
 import { usePreferencesStore } from '@/store/usePreferencesStore';
 import { getSurahMeta } from '@/data/surahMeta';
-import { getReciter, ayahAudioUrl, translateTtsUrl, splitForTts } from '@/data/reciters';
+import { getReciter, ayahAudioUrl, ttsAudioUrl, splitForTts } from '@/data/reciters';
 import { colors, spacing, typography, borderRadius, shadows } from '@/tokens';
 import { QuranAyah, QuranSurahSummary } from '@shared-types';
 
@@ -107,7 +107,7 @@ export default function SurahListScreen(): React.JSX.Element {
           const chunks = splitForTts(translationText);
           const trTracks = chunks.map((chunk, i) => ({
             id: chunks.length > 1 ? `${a.id}::${language}::${i}` : `${a.id}::${language}`,
-            url: translateTtsUrl(chunk, language),
+            url: ttsAudioUrl(chunk, language),
             title: `${name} ${surah.surah}:${a.ayah} — ${label}`,
             artist: language === 'ur' ? 'اردو ترجمہ (آواز)' : 'Translation (Voice)',
             arabic: a.arabic,

@@ -63,6 +63,13 @@ export const useUserStore = create<UserState>()(
     {
       name: 'dawat-user-storage',
       storage: createJSONStorage(() => AsyncStorage),
+      version: 1,
+      migrate: (persistedState, version) => {
+        if (version < 1 && persistedState && typeof persistedState === 'object') {
+          (persistedState as UserState).language = 'ur';
+        }
+        return persistedState as UserState;
+      },
     }
   )
 );

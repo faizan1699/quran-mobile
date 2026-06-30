@@ -1,3 +1,5 @@
+import { getBaseUrl } from '@/services/apiClient';
+
 export interface Reciter {
   id: string;
   name: string;
@@ -101,10 +103,10 @@ export function translationAudioUrl(
   return `https://everyayah.com/data/${reciter.folder}/${pad3(surahNumber)}${pad3(ayahNumber)}.mp3`;
 }
 
-export function translateTtsUrl(text: string, language: 'en' | 'ur' = 'ur'): string {
+export function ttsAudioUrl(text: string, language: 'en' | 'ur' = 'ur'): string {
   const tl = language === 'ur' ? 'ur' : 'en';
   const q = encodeURIComponent(text.trim());
-  return `https://translate.google.com/translate_tts?ie=UTF-8&tl=${tl}&client=tw-ob&q=${q}`;
+  return `${getBaseUrl()}/quran/tts?lang=${tl}&text=${q}`;
 }
 
 export function splitForTts(text: string, maxLen = 190): string[] {

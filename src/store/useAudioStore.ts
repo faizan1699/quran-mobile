@@ -8,7 +8,7 @@ import {
 } from 'expo-audio';
 import { TimedWord, QuranAyah } from '@shared-types';
 import { quranService } from '@/services/quranService';
-import { getReciter, ayahAudioUrl, translateTtsUrl, splitForTts } from '@/data/reciters';
+import { getReciter, ayahAudioUrl, ttsAudioUrl, splitForTts } from '@/data/reciters';
 import { getSurahMeta } from '@/data/surahMeta';
 import { usePreferencesStore } from '@/store/usePreferencesStore';
 import { useUserStore } from '@/store/useUserStore';
@@ -349,7 +349,7 @@ async function buildSurahTracks(surahNumber: number): Promise<AudioTrackInfo[]> 
       chunks.forEach((chunk, i) => {
         tracks.push({
           id: chunks.length > 1 ? `${a.id}::${language}::${i}` : `${a.id}::${language}`,
-          url: translateTtsUrl(chunk, language),
+          url: ttsAudioUrl(chunk, language),
           title: `${surahName} ${surahNumber}:${a.ayah} — ${translationLabel}`,
           artist: language === 'ur' ? 'اردو ترجمہ (آواز)' : 'Translation (Voice)',
           arabic: a.arabic,

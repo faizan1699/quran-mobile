@@ -31,7 +31,7 @@ import { AyahArabic } from '@/components/AyahArabic';
 import { useShareSheet } from '@/components/share/ShareProvider';
 import { useSurahAyahs, useTafseerSections } from '@/hooks/useQuran';
 import { getSurahMeta } from '@/data/surahMeta';
-import { RECITERS, getReciter, ayahAudioUrl, translateTtsUrl, splitForTts } from '@/data/reciters';
+import { RECITERS, getReciter, ayahAudioUrl, ttsAudioUrl, splitForTts } from '@/data/reciters';
 import { useTheme, Theme } from '@/theme';
 import { colors, spacing, typography, borderRadius, shadows } from '@/tokens';
 import { RootStackParamList } from '@/navigation/types';
@@ -154,7 +154,7 @@ export default function QuranReaderScreen(): React.JSX.Element {
     const chunks = splitForTts(text);
     return chunks.map((chunk, i) => ({
       id: chunks.length > 1 ? `${a.id}::${language}::${i}` : `${a.id}::${language}`,
-      url: translateTtsUrl(chunk, language),
+      url: ttsAudioUrl(chunk, language),
       title: `${surahName} ${surahNumber}:${a.ayah} — ${label}`,
       artist: language === 'ur' ? 'اردو ترجمہ (آواز)' : 'Translation (Voice)',
       arabic: a.arabic,
