@@ -154,7 +154,7 @@ export default function SplashScreen(): React.JSX.Element {
       <Animated.View
         style={{ opacity: logoOpacity, transform: [{ scale: logoScale }], alignItems: 'center' }}
       >
-        <Text style={styles.arabicLogo}>تعليم القرآن</Text>
+        <Text style={styles.arabicLogo}>دعوت اسلام</Text>
       </Animated.View>
 
       {/* Animated gold divider */}
@@ -164,7 +164,7 @@ export default function SplashScreen(): React.JSX.Element {
       <Animated.View
         style={{ opacity: subtitleOpacity, transform: [{ translateY: subtitleShift }] }}
       >
-        <Text style={styles.subTitle}>Taleem ul Quran</Text>
+        <Text style={styles.subTitle}>Dawat-e-Islam</Text>
       </Animated.View>
 
       {/* Loading dots */}

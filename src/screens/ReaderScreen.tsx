@@ -55,7 +55,7 @@ export default function ReaderScreen(): React.JSX.Element {
       id: item.id,
       url: item.audioUrl,
       title: item.narrator || `Verse #${item.sequenceNumber}`,
-      artist: 'Taleem ul Quran',
+      artist: 'Dawat-e-Islam',
       chapterId: item.chapterId,
       bookId: bookId,
       hadithNumber: item.hadithNumber ?? undefined,

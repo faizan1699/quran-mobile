@@ -20,11 +20,17 @@ import GulzarFont from '../../assets/fonts/Gulzar-Regular.ttf';
 import MarkaziTextFont from '../../assets/fonts/MarkaziText-Regular.ttf';
 import ReemKufiFont from '../../assets/fonts/ReemKufi-Regular.ttf';
 import PoppinsFont from '../../assets/fonts/Poppins-Regular.ttf';
+import AlQalamTajNastaleeqFont from '../../assets/fonts/AlQalamTajNastaleeq.ttf';
+import JameelNooriNastaleeqFont from '../../assets/fonts/JameelNooriNastaleeq.ttf';
+import MontserratFont from '../../assets/fonts/Montserrat-Regular.ttf';
 
 export const appFonts = {
   Inter: InterFont,
+  Montserrat: MontserratFont,
   'Scheherazade New': ScheherazadeNewFont,
   'Noto Nastaliq Urdu': NotoNastaliqUrduFont,
+  'AlQalam Taj Nastaleeq': AlQalamTajNastaleeqFont,
+  'Jameel Noori Nastaleeq': JameelNooriNastaleeqFont,
   Amiri: AmiriFont,
   'Noto Naskh Arabic': NotoNaskhArabicFont,
   Lateef: LateefFont,
@@ -38,4 +44,7 @@ export const appFonts = {
   ScheherazadePreview: ScheherazadeNewFont,
   NastaliqPreview: NotoNastaliqUrduFont,
   InterPreview: InterFont,
+  TajPreview: AlQalamTajNastaleeqFont,
+  NooriPreview: JameelNooriNastaleeqFont,
+  MontserratPreview: MontserratFont,
 };
