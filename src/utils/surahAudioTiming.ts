@@ -7,10 +7,18 @@ export interface AyahTiming {
   endSec: number;
 }
 
-const AR_SEC_PER_WORD = 1.6;
-const TR_SEC_PER_WORD = 0.42;
-const SEGMENT_BASE_SEC = 0.6;
-const BASMALA_AR_WORDS = 4;
+const AR_SEC_PER_LETTER = 0.25;
+const TR_SEC_PER_WORD = 0.35;
+const SEGMENT_BASE_SEC = 8;
+const BASMALA_LEAD_SEC = 12;
+
+const ARABIC_LETTERS = /[ء-يٱ-ۓۺ-ۿ]/g;
+
+function arabicLetterCount(text?: string | null): number {
+  if (!text) return 0;
+  const matched = text.match(ARABIC_LETTERS);
+  return matched ? matched.length : 0;
+}
 
 function wordCount(text?: string | null): number {
   if (!text) return 0;
@@ -20,9 +28,9 @@ function wordCount(text?: string | null): number {
 }
 
 function ayahWeight(a: QuranAyah): number {
-  const arabic = wordCount(a.arabic) * AR_SEC_PER_WORD;
+  const recitation = arabicLetterCount(a.arabic) * AR_SEC_PER_LETTER;
   const translation = wordCount(a.urdu ?? a.translation) * TR_SEC_PER_WORD;
-  return SEGMENT_BASE_SEC + arabic + translation;
+  return SEGMENT_BASE_SEC + recitation + translation;
 }
 
 export function computeSurahAyahTimings(
@@ -32,16 +40,16 @@ export function computeSurahAyahTimings(
 ): AyahTiming[] {
   if (!ayahs.length || !(totalSec > 0)) return [];
 
-  const weights = ayahs.map(ayahWeight);
-  const basmalaWeight = includeBasmala
-    ? SEGMENT_BASE_SEC + BASMALA_AR_WORDS * AR_SEC_PER_WORD
-    : 0;
+  const leadSec = includeBasmala ? Math.min(BASMALA_LEAD_SEC, totalSec * 0.5) : 0;
+  const usableSec = totalSec - leadSec;
+  if (!(usableSec > 0)) return [];
 
-  const rawTotal = basmalaWeight + weights.reduce((sum, w) => sum + w, 0);
+  const weights = ayahs.map(ayahWeight);
+  const rawTotal = weights.reduce((sum, w) => sum + w, 0);
   if (!(rawTotal > 0)) return [];
 
-  const factor = totalSec / rawTotal;
-  let cursor = basmalaWeight * factor;
+  const factor = usableSec / rawTotal;
+  let cursor = leadSec;
 
   return ayahs.map((a, i) => {
     const startSec = cursor;
