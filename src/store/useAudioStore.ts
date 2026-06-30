@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { Platform } from 'react-native';
+import { Platform, Alert } from 'react-native';
 import {
   createAudioPlayer,
   setAudioModeAsync,
@@ -8,7 +8,7 @@ import {
 } from 'expo-audio';
 import { TimedWord, QuranAyah } from '@shared-types';
 import { quranService } from '@/services/quranService';
-import { getReciter, ayahAudioUrl } from '@/data/reciters';
+import { getReciter, ayahAudioUrl, translateTtsUrl, splitForTts } from '@/data/reciters';
 import { getSurahMeta } from '@/data/surahMeta';
 import { usePreferencesStore } from '@/store/usePreferencesStore';
 import { useUserStore } from '@/store/useUserStore';
@@ -16,10 +16,12 @@ import { useUserStore } from '@/store/useUserStore';
 type SpeechModule = {
   speak: (text: string, options?: Record<string, unknown>) => void;
   stop: () => void;
+  getAvailableVoicesAsync?: () => Promise<Array<{ language?: string }>>;
 };
 
 let speechModule: SpeechModule | null = null;
 let speechResolved = false;
+let ttsVoiceWarned = false;
 
 function getSpeech(): SpeechModule | null {
   if (!speechResolved) {
@@ -34,9 +36,107 @@ function getSpeech(): SpeechModule | null {
 }
 
 function stopSpeech(): void {
+  if (Platform.OS === 'web') {
+    try {
+      getSynth()?.cancel();
+    } catch {}
+    return;
+  }
   try {
     getSpeech()?.stop();
   } catch {}
+}
+
+function notifyNoVoice(langPrefix: string): void {
+  if (ttsVoiceWarned) return;
+  ttsVoiceWarned = true;
+  const isUrdu = langPrefix.startsWith('ur');
+  Alert.alert(
+    isUrdu ? 'اردو آواز دستیاب نہیں' : 'Voice not available',
+    isUrdu
+      ? 'ترجمہ سننے کے لیے اردو ٹیکسٹ ٹو اسپیچ آواز درکار ہے۔ موبائل: Settings → System → Languages → Text-to-speech (Google) → اردو ڈاؤن لوڈ کریں۔ براؤزر: اکثر ڈیسک ٹاپ براؤزرز میں اردو آواز نہیں ہوتی، فون پر آزمائیں۔'
+      : 'To hear the translation, an Urdu Text-to-speech voice must be installed on this device/browser.'
+  );
+}
+
+async function warnIfNoVoice(langPrefix: string): Promise<void> {
+  if (ttsVoiceWarned || Platform.OS === 'web') return;
+  const speech = getSpeech();
+  if (!speech?.getAvailableVoicesAsync) return;
+  try {
+    const voices = await speech.getAvailableVoicesAsync();
+    const has = voices.some((v) =>
+      (v.language || '').toLowerCase().startsWith(langPrefix.toLowerCase())
+    );
+    if (!has) notifyNoVoice(langPrefix);
+  } catch {}
+}
+
+type WebVoice = { lang?: string; name?: string };
+let webVoicesPromise: Promise<WebVoice[]> | null = null;
+
+function getSynth(): any {
+  const g = globalThis as any;
+  return g.speechSynthesis && g.SpeechSynthesisUtterance ? g.speechSynthesis : null;
+}
+
+function loadWebVoices(): Promise<WebVoice[]> {
+  const synth = getSynth();
+  if (!synth) return Promise.resolve([]);
+  const existing = synth.getVoices();
+  if (existing && existing.length) return Promise.resolve(existing);
+  if (!webVoicesPromise) {
+    webVoicesPromise = new Promise((resolve) => {
+      let done = false;
+      const finish = () => {
+        if (done) return;
+        done = true;
+        resolve(synth.getVoices() || []);
+      };
+      try {
+        synth.addEventListener('voiceschanged', finish, { once: true });
+      } catch {}
+      setTimeout(finish, 1500);
+    });
+  }
+  return webVoicesPromise;
+}
+
+async function webSpeak(
+  text: string,
+  langPrefix: string,
+  rate: number,
+  onDone: () => void,
+  onError: () => void
+): Promise<void> {
+  const synth = getSynth();
+  if (!synth) {
+    onError();
+    return;
+  }
+  const voices = await loadWebVoices();
+  const lp = langPrefix.toLowerCase();
+  const base = lp.split('-')[0];
+  const voice =
+    voices.find((v) => (v.lang || '').toLowerCase().replace('_', '-').startsWith(lp)) ||
+    voices.find((v) => (v.lang || '').toLowerCase().startsWith(base));
+  try {
+    synth.cancel();
+  } catch {}
+  const utter = new (globalThis as any).SpeechSynthesisUtterance(text);
+  if (voice) utter.voice = voice;
+  utter.lang = (voice && voice.lang) || (base === 'ur' ? 'ur-PK' : 'en-US');
+  utter.rate = rate || 1;
+  utter.onend = onDone;
+  utter.onerror = onError;
+  setTimeout(() => {
+    try {
+      synth.speak(utter);
+    } catch {
+      onError();
+    }
+  }, 130);
+  if (!voice) notifyNoVoice(langPrefix);
 }
 
 export enum PlaybackState {
@@ -129,6 +229,10 @@ function clearTtsTimer(): void {
   if (ttsTimer) {
     clearInterval(ttsTimer);
     ttsTimer = null;
+  }
+  if (ttsWatchdog) {
+    clearTimeout(ttsWatchdog);
+    ttsWatchdog = null;
   }
 }
 
@@ -241,18 +345,18 @@ async function buildSurahTracks(surahNumber: number): Promise<AudioTrackInfo[]> 
 
     const translationText = translationTextFor(a);
     if (playTranslation && translationText) {
-      tracks.push({
-        id: `${a.id}::${language}`,
-        url: '',
-        title: `${surahName} ${surahNumber}:${a.ayah} — ${translationLabel}`,
-        artist: language === 'ur' ? 'اردو ترجمہ (آواز)' : 'Translation (Voice)',
-        arabic: a.arabic,
-        translation: translationText,
-        subtitle: `${surahName} • ${surahNumber}:${a.ayah} • ${translationLabel}`,
-        surahNumber,
-        tts: true,
-        ttsLang: language === 'ur' ? 'ur' : 'en-US',
-        ttsText: translationText,
+      const chunks = splitForTts(translationText);
+      chunks.forEach((chunk, i) => {
+        tracks.push({
+          id: chunks.length > 1 ? `${a.id}::${language}::${i}` : `${a.id}::${language}`,
+          url: translateTtsUrl(chunk, language),
+          title: `${surahName} ${surahNumber}:${a.ayah} — ${translationLabel}`,
+          artist: language === 'ur' ? 'اردو ترجمہ (آواز)' : 'Translation (Voice)',
+          arabic: a.arabic,
+          translation: translationText,
+          subtitle: `${surahName} • ${surahNumber}:${a.ayah} • ${translationLabel}`,
+          surahNumber,
+        });
       });
     }
   }
@@ -469,30 +573,20 @@ export const useAudioStore = create<AudioState>((set, get) => {
         : {}),
     });
 
-    const speech = getSpeech();
-    if (!text || !speech) {
+    const lang = track.ttsLang || 'ur';
+    const speech = Platform.OS === 'web' ? null : getSpeech();
+
+    if (!text || (Platform.OS !== 'web' && !speech)) {
       void handleTrackFinished();
       return;
     }
 
     const advanceOnce = () => {
       if (get().currentTrack?.id === track.id) {
+        clearTtsTimer();
         void handleTrackFinished();
       }
     };
-
-    try {
-      speech.stop();
-      speech.speak(text, {
-        language: track.ttsLang || 'ur',
-        rate,
-        onDone: advanceOnce,
-        onError: advanceOnce,
-      });
-    } catch {
-      void handleTrackFinished();
-      return;
-    }
 
     clearTtsTimer();
     ttsTimer = setInterval(() => {
@@ -503,8 +597,25 @@ export const useAudioStore = create<AudioState>((set, get) => {
       }
       const next = Math.min(estimated, state.position + 0.25);
       set({ position: next });
-      if (next >= estimated) clearTtsTimer();
     }, 250);
+    ttsWatchdog = setTimeout(advanceOnce, (estimated * 2 + 6) * 1000);
+
+    if (Platform.OS === 'web') {
+      void webSpeak(text, lang, rate, advanceOnce, advanceOnce);
+      return;
+    }
+
+    try {
+      speech!.speak(text, {
+        language: lang,
+        rate,
+        onDone: advanceOnce,
+        onError: advanceOnce,
+      });
+    } catch {
+      advanceOnce();
+    }
+    void warnIfNoVoice(lang);
   };
 
   const startPlayback = (track: AudioTrackInfo, startSeconds: number) => {

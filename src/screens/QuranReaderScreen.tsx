@@ -31,7 +31,7 @@ import { AyahArabic } from '@/components/AyahArabic';
 import { useShareSheet } from '@/components/share/ShareProvider';
 import { useSurahAyahs, useTafseerSections } from '@/hooks/useQuran';
 import { getSurahMeta } from '@/data/surahMeta';
-import { RECITERS, getReciter, ayahAudioUrl } from '@/data/reciters';
+import { RECITERS, getReciter, ayahAudioUrl, translateTtsUrl, splitForTts } from '@/data/reciters';
 import { useTheme, Theme } from '@/theme';
 import { colors, spacing, typography, borderRadius, shadows } from '@/tokens';
 import { RootStackParamList } from '@/navigation/types';
@@ -147,28 +147,33 @@ export default function QuranReaderScreen(): React.JSX.Element {
     surahNumber,
   });
 
-  const buildTranslationTrack = (a: QuranAyah) => ({
-    id: `${a.id}::${language}`,
-    url: '',
-    title: `${surahName} ${surahNumber}:${a.ayah} — ${language === 'ur' ? 'ترجمہ' : 'Translation'
-      }`,
-    artist: language === 'ur' ? 'اردو ترجمہ (آواز)' : 'Translation (Voice)',
-    arabic: a.arabic,
-    translation: translationTextFor(a) ?? undefined,
-    subtitle: `${surahName} • ${surahNumber}:${a.ayah} • ${language === 'ur' ? 'ترجمہ' : 'Translation'
-      }`,
-    surahNumber,
-    tts: true,
-    ttsLang: language === 'ur' ? 'ur' : 'en-US',
-    ttsText: translationTextFor(a) ?? undefined,
-  });
+  const buildTranslationTracks = (a: QuranAyah) => {
+    const text = translationTextFor(a);
+    if (!text) return [];
+    const label = language === 'ur' ? 'ترجمہ' : 'Translation';
+    const chunks = splitForTts(text);
+    return chunks.map((chunk, i) => ({
+      id: chunks.length > 1 ? `${a.id}::${language}::${i}` : `${a.id}::${language}`,
+      url: translateTtsUrl(chunk, language),
+      title: `${surahName} ${surahNumber}:${a.ayah} — ${label}`,
+      artist: language === 'ur' ? 'اردو ترجمہ (آواز)' : 'Translation (Voice)',
+      arabic: a.arabic,
+      translation: text,
+      subtitle: `${surahName} • ${surahNumber}:${a.ayah} • ${label}`,
+      surahNumber,
+    }));
+  };
+
+  const isCurrentAyahId = (a: QuranAyah) => {
+    const id = currentTrack?.id;
+    return !!id && (id === a.id || id.startsWith(`${a.id}::`));
+  };
 
   const isAyahPlaying = (a: QuranAyah) =>
-    (currentTrack?.id === a.id || currentTrack?.id === `${a.id}::${language}`) &&
+    isCurrentAyahId(a) &&
     (playbackState === State.Playing || playbackState === State.Buffering);
 
-  const isAyahCurrent = (a: QuranAyah) =>
-    currentTrack?.id === a.id || currentTrack?.id === `${a.id}::${language}`;
+  const isAyahCurrent = (a: QuranAyah) => isCurrentAyahId(a);
 
   const translationTextFor = (a: QuranAyah) =>
     language === 'ur' ? a.urdu : a.translation;
@@ -177,7 +182,7 @@ export default function QuranReaderScreen(): React.JSX.Element {
     () =>
       (ayahs ?? []).flatMap((a: QuranAyah) =>
         playTranslation && !!translationTextFor(a)
-          ? [buildTrack(a), buildTranslationTrack(a)]
+          ? [buildTrack(a), ...buildTranslationTracks(a)]
           : [buildTrack(a)]
       ),
     [ayahs, surahName, surahNumber, reciter, playTranslation, language]
@@ -228,7 +233,7 @@ export default function QuranReaderScreen(): React.JSX.Element {
     openFullPlayer();
     const ayahTracks =
       playTranslation && translationTextFor(ayah)
-        ? [buildTrack(ayah), buildTranslationTrack(ayah)]
+        ? [buildTrack(ayah), ...buildTranslationTracks(ayah)]
         : [buildTrack(ayah)];
     setAutoAdvanceSurah(false);
     await playTrack(ayahTracks[0]);

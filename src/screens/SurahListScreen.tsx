@@ -21,7 +21,7 @@ import { quranService } from '@/services/quranService';
 import { useAudioStore, State } from '@/store/useAudioStore';
 import { usePreferencesStore } from '@/store/usePreferencesStore';
 import { getSurahMeta } from '@/data/surahMeta';
-import { getReciter, ayahAudioUrl } from '@/data/reciters';
+import { getReciter, ayahAudioUrl, translateTtsUrl, splitForTts } from '@/data/reciters';
 import { colors, spacing, typography, borderRadius, shadows } from '@/tokens';
 import { QuranAyah, QuranSurahSummary } from '@shared-types';
 
@@ -103,26 +103,19 @@ export default function SurahListScreen(): React.JSX.Element {
           surahNumber: surah.surah,
         };
         if (playTranslation && translationText) {
-          return [
-            arabic,
-            {
-              id: `${a.id}::${language}`,
-              url: '',
-              title: `${name} ${surah.surah}:${a.ayah} — ${
-                language === 'ur' ? 'ترجمہ' : 'Translation'
-              }`,
-              artist: language === 'ur' ? 'اردو ترجمہ (آواز)' : 'Translation (Voice)',
-              arabic: a.arabic,
-              translation: translationText ?? undefined,
-              subtitle: `${name} • ${surah.surah}:${a.ayah} • ${
-                language === 'ur' ? 'ترجمہ' : 'Translation'
-              }`,
-              surahNumber: surah.surah,
-              tts: true,
-              ttsLang: language === 'ur' ? 'ur' : 'en-US',
-              ttsText: translationText ?? undefined,
-            },
-          ];
+          const label = language === 'ur' ? 'ترجمہ' : 'Translation';
+          const chunks = splitForTts(translationText);
+          const trTracks = chunks.map((chunk, i) => ({
+            id: chunks.length > 1 ? `${a.id}::${language}::${i}` : `${a.id}::${language}`,
+            url: translateTtsUrl(chunk, language),
+            title: `${name} ${surah.surah}:${a.ayah} — ${label}`,
+            artist: language === 'ur' ? 'اردو ترجمہ (آواز)' : 'Translation (Voice)',
+            arabic: a.arabic,
+            translation: translationText ?? undefined,
+            subtitle: `${name} • ${surah.surah}:${a.ayah} • ${label}`,
+            surahNumber: surah.surah,
+          }));
+          return [arabic, ...trTracks];
         }
         return [arabic];
       });
