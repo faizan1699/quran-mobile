@@ -40,7 +40,7 @@ interface UserState {
 export const useUserStore = create<UserState>()(
   persist(
     (set) => ({
-      language: 'en',
+      language: 'ur',
       fiqhMethod: 'Hanafi',
       location: {
         latitude: 21.4225, // Default to Mecca

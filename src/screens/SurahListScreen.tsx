@@ -37,6 +37,7 @@ export default function SurahListScreen(): React.JSX.Element {
 
   const playTrack = useAudioStore((s) => s.playTrack);
   const setQueue = useAudioStore((s) => s.setQueue);
+  const setAutoAdvanceSurah = useAudioStore((s) => s.setAutoAdvanceSurah);
   const togglePlay = useAudioStore((s) => s.togglePlay);
   const currentTrack = useAudioStore((s) => s.currentTrack);
   const playbackState = useAudioStore((s) => s.playbackState);
@@ -126,6 +127,7 @@ export default function SurahListScreen(): React.JSX.Element {
         return [arabic];
       });
       if (tracks.length === 0) return;
+      setAutoAdvanceSurah(true);
       await playTrack(tracks[0]);
       await setQueue(tracks);
     } catch (e) {

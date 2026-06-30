@@ -6,13 +6,38 @@ import {
   AudioPlayer,
   AudioStatus,
 } from 'expo-audio';
-import * as Speech from 'expo-speech';
 import { TimedWord, QuranAyah } from '@shared-types';
 import { quranService } from '@/services/quranService';
 import { getReciter, ayahAudioUrl } from '@/data/reciters';
 import { getSurahMeta } from '@/data/surahMeta';
 import { usePreferencesStore } from '@/store/usePreferencesStore';
 import { useUserStore } from '@/store/useUserStore';
+
+type SpeechModule = {
+  speak: (text: string, options?: Record<string, unknown>) => void;
+  stop: () => void;
+};
+
+let speechModule: SpeechModule | null = null;
+let speechResolved = false;
+
+function getSpeech(): SpeechModule | null {
+  if (!speechResolved) {
+    speechResolved = true;
+    try {
+      speechModule = require('expo-speech') as SpeechModule;
+    } catch {
+      speechModule = null;
+    }
+  }
+  return speechModule;
+}
+
+function stopSpeech(): void {
+  try {
+    getSpeech()?.stop();
+  } catch {}
+}
 
 export enum PlaybackState {
   None = 'none',
@@ -51,10 +76,12 @@ interface AudioState {
   queue: AudioTrackInfo[];
   durations: Record<string, number>;
   playbackRate: number;
+  autoAdvanceSurah: boolean;
 
   playTrack: (track: AudioTrackInfo, startSeconds?: number) => Promise<void>;
   togglePlay: () => Promise<void>;
   setQueue: (tracks: AudioTrackInfo[]) => Promise<void>;
+  setAutoAdvanceSurah: (enabled: boolean) => void;
   skipToNext: () => Promise<void>;
   skipToPrevious: () => Promise<void>;
   toggleShuffle: () => void;
@@ -83,6 +110,7 @@ let loadRetries = 0;
 let lastTrack: AudioTrackInfo | null = null;
 let lastStartSeconds = 0;
 let ttsTimer: ReturnType<typeof setInterval> | null = null;
+let ttsWatchdog: ReturnType<typeof setTimeout> | null = null;
 
 const LOAD_TIMEOUT_MS = 9000;
 const MAX_LOAD_RETRIES = 2;
@@ -281,9 +309,7 @@ export const useAudioStore = create<AudioState>((set, get) => {
   const teardownPlayer = () => {
     clearLoadWatchdog();
     clearTtsTimer();
-    try {
-      Speech.stop();
-    } catch {}
+    stopSpeech();
     if (statusSub) {
       try {
         statusSub.remove();
@@ -302,6 +328,9 @@ export const useAudioStore = create<AudioState>((set, get) => {
   };
 
   const maybeAutoAdvanceSurah = async (): Promise<boolean> => {
+    if (!get().autoAdvanceSurah) {
+      return false;
+    }
     if (!usePreferencesStore.getState().autoPlayNextSurah) {
       return false;
     }
@@ -440,7 +469,8 @@ export const useAudioStore = create<AudioState>((set, get) => {
         : {}),
     });
 
-    if (!text) {
+    const speech = getSpeech();
+    if (!text || !speech) {
       void handleTrackFinished();
       return;
     }
@@ -452,8 +482,8 @@ export const useAudioStore = create<AudioState>((set, get) => {
     };
 
     try {
-      Speech.stop();
-      Speech.speak(text, {
+      speech.stop();
+      speech.speak(text, {
         language: track.ttsLang || 'ur',
         rate,
         onDone: advanceOnce,
@@ -503,6 +533,7 @@ export const useAudioStore = create<AudioState>((set, get) => {
     queue: [],
     durations: {},
     playbackRate: 1,
+    autoAdvanceSurah: true,
 
     playTrack: async (track, startSeconds = 0) => {
       try {
@@ -538,9 +569,7 @@ export const useAudioStore = create<AudioState>((set, get) => {
             shouldBePlaying = false;
             continuousAdvance = false;
             clearTtsTimer();
-            try {
-              Speech.stop();
-            } catch {}
+            stopSpeech();
             set({ playbackState: PlaybackState.Paused });
           } else {
             shouldBePlaying = true;
@@ -579,6 +608,8 @@ export const useAudioStore = create<AudioState>((set, get) => {
       }
       scheduleDurationPrefetch(tracks);
     },
+
+    setAutoAdvanceSurah: (enabled) => set({ autoAdvanceSurah: enabled }),
 
     skipToNext: async () => {
       try {
@@ -745,9 +776,7 @@ if (typeof module !== 'undefined' && module?.hot) {
       player?.pause();
       player?.remove();
     } catch {}
-    try {
-      Speech.stop();
-    } catch {}
+    stopSpeech();
     if (ttsTimer) {
       clearInterval(ttsTimer);
       ttsTimer = null;

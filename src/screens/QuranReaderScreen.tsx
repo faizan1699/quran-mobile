@@ -74,6 +74,7 @@ export default function QuranReaderScreen(): React.JSX.Element {
 
   const playTrack = useAudioStore((s) => s.playTrack);
   const setQueue = useAudioStore((s) => s.setQueue);
+  const setAutoAdvanceSurah = useAudioStore((s) => s.setAutoAdvanceSurah);
   const togglePlay = useAudioStore((s) => s.togglePlay);
   const currentTrack = useAudioStore((s) => s.currentTrack);
   const playbackState = useAudioStore((s) => s.playbackState);
@@ -95,6 +96,7 @@ export default function QuranReaderScreen(): React.JSX.Element {
   const [fontModifier, setFontModifier] = useState(0); // 0 -> 4 -> 8 -> 12
   const [reciterModalOpen, setReciterModalOpen] = useState(false);
   const [readMode, setReadMode] = useState(false);
+  const [displayMode, setDisplayMode] = useState<'both' | 'arabic' | 'translation'>('both');
 
   const [notesByAyah, setNotesByAyah] = useState<Record<number, Note[]>>({});
 
@@ -195,6 +197,19 @@ export default function QuranReaderScreen(): React.JSX.Element {
   const cycleFont = () =>
     setFontModifier((p) => (p === 0 ? 4 : p === 4 ? 8 : p === 8 ? 12 : 0));
 
+  const cycleDisplayMode = () =>
+    setDisplayMode((p) =>
+      p === 'both' ? 'arabic' : p === 'arabic' ? 'translation' : 'both'
+    );
+
+  const displayModeLabel =
+    language === 'ur'
+      ? { both: 'سب', arabic: 'عربی', translation: 'ترجمہ' }[displayMode]
+      : { both: 'All', arabic: 'Ar', translation: 'Tr' }[displayMode];
+
+  const showArabic = displayMode !== 'translation';
+  const showTranslationText = displayMode !== 'arabic';
+
   const markRead = (ayah: QuranAyah) =>
     setLastRead({
       surahNumber,
@@ -211,13 +226,19 @@ export default function QuranReaderScreen(): React.JSX.Element {
   const playAyah = async (ayah: QuranAyah) => {
     markRead(ayah);
     openFullPlayer();
-    await playTrack(buildTrack(ayah));
-    await setQueue(tracks);
+    const ayahTracks =
+      playTranslation && translationTextFor(ayah)
+        ? [buildTrack(ayah), buildTranslationTrack(ayah)]
+        : [buildTrack(ayah)];
+    setAutoAdvanceSurah(false);
+    await playTrack(ayahTracks[0]);
+    await setQueue(ayahTracks);
   };
 
   const playSurah = async () => {
     if (tracks.length === 0) return;
     openFullPlayer();
+    setAutoAdvanceSurah(true);
     await playTrack(tracks[0]);
     await setQueue(tracks);
   };
@@ -273,6 +294,16 @@ export default function QuranReaderScreen(): React.JSX.Element {
               {language === 'ur' ? 'مطالعہ' : 'Read'}
             </Text>
           </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.fontBtn, displayMode !== 'both' && styles.toggleActive]}
+            onPress={cycleDisplayMode}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.fontIcon}>👁</Text>
+            <Text style={[styles.fontText, displayMode !== 'both' && styles.toggleActiveText]}>
+              {displayModeLabel}
+            </Text>
+          </TouchableOpacity>
         </View>
 
         <TouchableOpacity
@@ -318,22 +349,49 @@ export default function QuranReaderScreen(): React.JSX.Element {
           </View>
         ) : readMode ? (
           <View style={styles.readCard}>
-            <Text
-              style={[
-                styles.readArabic,
-                {
-                  fontSize: sizeArabic + 4,
-                  lineHeight: (sizeArabic + 4) * typography.lineHeight.arabic,
-                },
-              ]}
-            >
-              {ayahs.map((ayah: QuranAyah) => (
-                <Text key={ayah.id}>
-                  {ayah.arabic}
-                  <Text style={styles.ayahMarker}>{`  ﴿${toArabicDigits(ayah.ayah)}﴾  `}</Text>
-                </Text>
-              ))}
-            </Text>
+            {displayMode === 'translation' ? (
+              <Text
+                style={[
+                  styles.translation,
+                  language === 'ur' && styles.translationUrdu,
+                  {
+                    fontSize: sizeTranslation,
+                    lineHeight:
+                      sizeTranslation *
+                      (language === 'ur'
+                        ? typography.lineHeight.urdu
+                        : typography.lineHeight.normal),
+                  },
+                ]}
+              >
+                {ayahs.map((ayah: QuranAyah) => {
+                  const tr = translationTextFor(ayah);
+                  return tr ? (
+                    <Text key={ayah.id}>
+                      {tr}
+                      <Text style={styles.ayahMarker}>{`  ﴿${toArabicDigits(ayah.ayah)}﴾  `}</Text>
+                    </Text>
+                  ) : null;
+                })}
+              </Text>
+            ) : (
+              <Text
+                style={[
+                  styles.readArabic,
+                  {
+                    fontSize: sizeArabic + 4,
+                    lineHeight: (sizeArabic + 4) * typography.lineHeight.arabic,
+                  },
+                ]}
+              >
+                {ayahs.map((ayah: QuranAyah) => (
+                  <Text key={ayah.id}>
+                    {ayah.arabic}
+                    <Text style={styles.ayahMarker}>{`  ﴿${toArabicDigits(ayah.ayah)}﴾  `}</Text>
+                  </Text>
+                ))}
+              </Text>
+            )}
           </View>
         ) : (
           ayahs.map((ayah: QuranAyah) => {
@@ -446,20 +504,22 @@ export default function QuranReaderScreen(): React.JSX.Element {
                 </View>
 
                 {/* Arabic */}
-                <AyahArabic
-                  trackId={ayah.id}
-                  plainText={ayah.arabic}
-                  textStyle={[
-                    styles.arabic,
-                    { fontSize: sizeArabic, lineHeight: sizeArabic * typography.lineHeight.arabic },
-                  ]}
-                  activeStyle={styles.arabicActive}
-                />
+                {showArabic && (
+                  <AyahArabic
+                    trackId={ayah.id}
+                    plainText={ayah.arabic}
+                    textStyle={[
+                      styles.arabic,
+                      { fontSize: sizeArabic, lineHeight: sizeArabic * typography.lineHeight.arabic },
+                    ]}
+                    activeStyle={styles.arabicActive}
+                  />
+                )}
 
-                {/* Translation (always shown with the Arabic) */}
-                {!!translation && (
+                {/* Translation */}
+                {showTranslationText && !!translation && (
                   <>
-                    <View style={styles.divider} />
+                    {showArabic && <View style={styles.divider} />}
                     <Text
                       style={[
                         styles.translation,
