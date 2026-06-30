@@ -244,7 +244,7 @@ export default function QuranReaderScreen(): React.JSX.Element {
     await setQueue(tracks);
   };
 
-  const buildScTrack = (track: ScTrack, kind: string) => {
+  const buildScTrack = (track: ScTrack, kind: string, surahSync = false) => {
     const local = useAudioDownloadStore.getState().localUri(track.trackId);
     return {
       id: `sc-${track.trackId}`,
@@ -255,6 +255,7 @@ export default function QuranReaderScreen(): React.JSX.Element {
       subtitle: `${surahName} • ${kind}`,
       surahNumber,
       durationMs: track.duration ?? undefined,
+      surahSync,
     };
   };
 
@@ -279,7 +280,7 @@ export default function QuranReaderScreen(): React.JSX.Element {
     if (!tilawatTracks || tilawatTracks.length === 0) return;
     openFullPlayer();
     const kind = language === 'ur' ? 'تلاوت و ترجمہ' : 'Tilawat + Tarjuma';
-    const scTracks = tilawatTracks.map((trk) => buildScTrack(trk, kind));
+    const scTracks = tilawatTracks.map((trk) => buildScTrack(trk, kind, true));
     setAutoAdvanceSurah(false);
     await playTrack(scTracks[0]);
     await setQueue(scTracks);

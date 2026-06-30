@@ -166,6 +166,7 @@ interface AudioTrackInfo {
   ttsLang?: string;
   ttsText?: string;
   durationMs?: number;
+  surahSync?: boolean;
 }
 
 interface AudioState {
