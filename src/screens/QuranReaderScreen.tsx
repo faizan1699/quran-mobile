@@ -53,6 +53,8 @@ const Ionicons = RawIonicons as unknown as React.ComponentType<IconProps>;
 
 const BISMILLAH = 'بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ';
 
+const SHOW_RECITER_SELECTOR = false;
+
 const toArabicDigits = (n: number): string =>
   String(n).replace(/[0-9]/g, (d) => '٠١٢٣٤٥٦٧٨٩'[Number(d)]);
 
@@ -326,16 +328,18 @@ export default function QuranReaderScreen(): React.JSX.Element {
         <View style={[styles.controlActions, isRTL && styles.rowRTL]}>
           <BackButton />
 
-          <TouchableOpacity
-            style={styles.reciterBtn}
-            onPress={() => setReciterModalOpen(true)}
-            activeOpacity={0.8}
-          >
-            <Text style={styles.reciterIcon}>🎙</Text>
-            <Text style={styles.reciterText} numberOfLines={1}>
-              {language === 'ur' ? reciter.nameUrdu : reciter.name}
-            </Text>
-          </TouchableOpacity>
+          {SHOW_RECITER_SELECTOR && (
+            <TouchableOpacity
+              style={styles.reciterBtn}
+              onPress={() => setReciterModalOpen(true)}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.reciterIcon}>🎙</Text>
+              <Text style={styles.reciterText} numberOfLines={1}>
+                {language === 'ur' ? reciter.nameUrdu : reciter.name}
+              </Text>
+            </TouchableOpacity>
+          )}
           <TouchableOpacity style={styles.fontBtn} onPress={cycleFont} activeOpacity={0.8}>
             <Text style={styles.fontIcon}>🅰</Text>
             <Text style={styles.fontText}>+{fontModifier}</Text>
@@ -380,35 +384,8 @@ export default function QuranReaderScreen(): React.JSX.Element {
           <Text style={styles.playSurahText}>▶  {t('quran.playSurah')}</Text>
         </TouchableOpacity>
 
-        {(!!tilawatTracks?.length || !!tafseerAudioTracks?.length) && (
+        {!!tafseerAudioTracks?.length && (
           <View style={[styles.scBtnRow, isRTL && styles.rowRTL]}>
-            {!!tilawatTracks?.length && (
-              <View style={styles.scBtn}>
-                <TouchableOpacity
-                  style={styles.scBtnMain}
-                  onPress={playTilawat}
-                  activeOpacity={0.85}
-                >
-                  <Text style={styles.scBtnText} numberOfLines={1}>
-                    🎧 {language === 'ur' ? 'تلاوت + ترجمہ' : 'Tilawat + Tarjuma'}
-                  </Text>
-                  <Text style={styles.scBtnSub} numberOfLines={1}>
-                    {language === 'ur' ? 'شیخ سعید' : 'Sheikh Saeed'}
-                  </Text>
-                </TouchableOpacity>
-                {canDownload && (
-                  <TouchableOpacity
-                    style={styles.scDl}
-                    onPress={() => onDownloadPress(tilawatTracks[0])}
-                    activeOpacity={0.7}
-                  >
-                    <Text style={styles.scDlText}>
-                      {downloadLabel(tilawatTracks[0].trackId)}
-                    </Text>
-                  </TouchableOpacity>
-                )}
-              </View>
-            )}
             {!!tafseerAudioTracks?.length && (
               <TouchableOpacity
                 style={styles.scBtn}
@@ -737,7 +714,7 @@ export default function QuranReaderScreen(): React.JSX.Element {
       </ScrollView>
 
       <Modal
-        visible={reciterModalOpen}
+        visible={SHOW_RECITER_SELECTOR && reciterModalOpen}
         transparent
         animationType="fade"
         onRequestClose={() => setReciterModalOpen(false)}
