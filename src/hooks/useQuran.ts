@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { quranService } from '@/services/quranService';
+import { audioContentService, ScTrack } from '@/services/audioContentService';
 import { QuranAyah, QuranSurahSummary, QuranTafseerSection } from '@shared-types';
 
 /** Surah index (number + ayah count) sourced from the QuranAyah table. */
@@ -41,6 +42,26 @@ export function useTafseerSections(surahNumber?: number) {
     queryKey: ['quran', 'tafseer', surahNumber],
     queryFn: () => quranService.getTafseerSections(surahNumber as number),
     enabled: !!surahNumber,
+    staleTime: Infinity,
+  });
+}
+
+/** Sheikh Saeed tilaawat + tarjumah audio tracks (SoundCloud) for a surah. */
+export function useTilawatTracks(surah?: number) {
+  return useQuery<ScTrack[]>({
+    queryKey: ['audio', 'tilawat', surah],
+    queryFn: () => audioContentService.getTilawat(surah as number),
+    enabled: !!surah,
+    staleTime: Infinity,
+  });
+}
+
+/** Sheikh Saeed tafseer lesson audio tracks (SoundCloud) for a surah. */
+export function useTafseerAudioTracks(surah?: number) {
+  return useQuery<ScTrack[]>({
+    queryKey: ['audio', 'tafseer', surah],
+    queryFn: () => audioContentService.getTafseer(surah as number),
+    enabled: !!surah,
     staleTime: Infinity,
   });
 }

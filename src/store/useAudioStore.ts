@@ -12,6 +12,7 @@ import { getReciter, ayahAudioUrl, ttsAudioUrl, splitForTts } from '@/data/recit
 import { getSurahMeta } from '@/data/surahMeta';
 import { usePreferencesStore } from '@/store/usePreferencesStore';
 import { useUserStore } from '@/store/useUserStore';
+import { useAudioDownloadStore } from '@/store/useAudioDownloadStore';
 
 type SpeechModule = {
   speak: (text: string, options?: Record<string, unknown>) => void;
@@ -164,6 +165,7 @@ interface AudioTrackInfo {
   tts?: boolean;
   ttsLang?: string;
   ttsText?: string;
+  durationMs?: number;
 }
 
 interface AudioState {
@@ -667,6 +669,17 @@ export const useAudioStore = create<AudioState>((set, get) => {
 
         await ensureAudioMode();
         startPlayback(track, startSeconds);
+
+        if (track.id.startsWith('sc-') && /^https?:/i.test(track.url)) {
+          const tid = Number(track.id.slice(3));
+          const withinAutoCap =
+            !track.durationMs || track.durationMs <= 90 * 60 * 1000;
+          if (tid > 0 && withinAutoCap) {
+            void useAudioDownloadStore
+              .getState()
+              .ensureCached({ trackId: tid, title: track.title }, track.surahNumber);
+          }
+        }
       } catch (error) {
         console.error('Error playing track via expo-audio:', error);
       }
@@ -714,6 +727,15 @@ export const useAudioStore = create<AudioState>((set, get) => {
 
     setQueue: async (tracks) => {
       set({ queue: tracks });
+      const known = { ...get().durations };
+      let changed = false;
+      for (const t of tracks) {
+        if (t.durationMs && t.durationMs > 0 && !(known[t.id] > 0)) {
+          known[t.id] = t.durationMs / 1000;
+          changed = true;
+        }
+      }
+      if (changed) set({ durations: known });
       if (tracks.length > 0 && !get().currentTrack) {
         await get().playTrack(tracks[0]);
       }

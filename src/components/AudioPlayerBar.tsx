@@ -25,11 +25,13 @@ const Ionicons = RawIonicons as unknown as React.ComponentType<IconProps>;
 
 function formatDuration(seconds: number): string {
   if (isNaN(seconds) || seconds < 0) return '00:00';
-  const mins = Math.floor(seconds / 60);
-  const secs = Math.floor(seconds % 60);
-  const padMins = mins < 10 ? `0${mins}` : mins;
-  const padSecs = secs < 10 ? `0${secs}` : secs;
-  return `${padMins}:${padSecs}`;
+  const total = Math.floor(seconds);
+  const hrs = Math.floor(total / 3600);
+  const mins = Math.floor((total % 3600) / 60);
+  const secs = total % 60;
+  const pad = (n: number) => (n < 10 ? `0${n}` : `${n}`);
+  if (hrs > 0) return `${hrs}:${pad(mins)}:${pad(secs)}`;
+  return `${pad(mins)}:${pad(secs)}`;
 }
 
 export function AudioPlayerBar(): React.JSX.Element | null {

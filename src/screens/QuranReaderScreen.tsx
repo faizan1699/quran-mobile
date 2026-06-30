@@ -29,7 +29,14 @@ import { AudioPlayerBar } from '@/components/AudioPlayerBar';
 import { PlayingWaves } from '@/components/PlayingWaves';
 import { AyahArabic } from '@/components/AyahArabic';
 import { useShareSheet } from '@/components/share/ShareProvider';
-import { useSurahAyahs, useTafseerSections } from '@/hooks/useQuran';
+import {
+  useSurahAyahs,
+  useTafseerSections,
+  useTilawatTracks,
+  useTafseerAudioTracks,
+} from '@/hooks/useQuran';
+import { scStreamUrl, ScTrack } from '@/services/audioContentService';
+import { useAudioDownloadStore } from '@/store/useAudioDownloadStore';
 import { getSurahMeta } from '@/data/surahMeta';
 import { RECITERS, getReciter, ayahAudioUrl, ttsAudioUrl, splitForTts } from '@/data/reciters';
 import { useTheme, Theme } from '@/theme';
@@ -97,6 +104,16 @@ export default function QuranReaderScreen(): React.JSX.Element {
   const [reciterModalOpen, setReciterModalOpen] = useState(false);
   const [readMode, setReadMode] = useState(false);
   const [displayMode, setDisplayMode] = useState<'both' | 'arabic' | 'translation'>('both');
+  const [tafseerAudioModalOpen, setTafseerAudioModalOpen] = useState(false);
+
+  const { data: tilawatTracks } = useTilawatTracks(surahNumber);
+  const { data: tafseerAudioTracks } = useTafseerAudioTracks(surahNumber);
+
+  const downloadEntries = useAudioDownloadStore((s) => s.entries);
+  const downloadProgress = useAudioDownloadStore((s) => s.progress);
+  const ensureCached = useAudioDownloadStore((s) => s.ensureCached);
+  const removeDownload = useAudioDownloadStore((s) => s.remove);
+  const canDownload = Platform.OS !== 'web';
 
   const [notesByAyah, setNotesByAyah] = useState<Record<number, Note[]>>({});
 
@@ -248,6 +265,70 @@ export default function QuranReaderScreen(): React.JSX.Element {
     await setQueue(tracks);
   };
 
+  const buildScTrack = (track: ScTrack, kind: string) => {
+    const local = useAudioDownloadStore.getState().localUri(track.trackId);
+    return {
+      id: `sc-${track.trackId}`,
+      url: local ?? scStreamUrl(track.trackId),
+      title: track.title,
+      artist: language === 'ur' ? 'شیخ سعید' : 'Sheikh Saeed',
+      arabic: '',
+      subtitle: `${surahName} • ${kind}`,
+      surahNumber,
+      durationMs: track.duration ?? undefined,
+    };
+  };
+
+  const downloadLabel = (trackId: number) => {
+    const id = String(trackId);
+    if (downloadProgress[id] != null) return `${Math.round(downloadProgress[id] * 100)}%`;
+    if (downloadEntries[id]?.done) return '✓';
+    if (downloadEntries[id]) return '↻';
+    return '⬇';
+  };
+
+  const onDownloadPress = (track: ScTrack) => {
+    const id = String(track.trackId);
+    if (downloadEntries[id]?.done) {
+      void removeDownload(track.trackId);
+    } else if (downloadProgress[id] == null) {
+      void ensureCached({ trackId: track.trackId, title: track.title }, surahNumber);
+    }
+  };
+
+  const playTilawat = async () => {
+    if (!tilawatTracks || tilawatTracks.length === 0) return;
+    openFullPlayer();
+    const kind = language === 'ur' ? 'تلاوت و ترجمہ' : 'Tilawat + Tarjuma';
+    const scTracks = tilawatTracks.map((trk) => buildScTrack(trk, kind));
+    setAutoAdvanceSurah(false);
+    await playTrack(scTracks[0]);
+    await setQueue(scTracks);
+  };
+
+  const playTafseerLesson = async (index: number) => {
+    if (!tafseerAudioTracks || tafseerAudioTracks.length === 0) return;
+    setTafseerAudioModalOpen(false);
+    openFullPlayer();
+    const kind = language === 'ur' ? 'تفسیر' : 'Tafseer';
+    const scTracks = tafseerAudioTracks.map((trk) => buildScTrack(trk, kind));
+    setAutoAdvanceSurah(false);
+    await playTrack(scTracks[index]);
+    await setQueue(scTracks);
+  };
+
+  const formatDuration = (ms: number | null) => {
+    if (!ms || ms <= 0) return '';
+    const total = Math.round(ms / 1000);
+    const h = Math.floor(total / 3600);
+    const m = Math.floor((total % 3600) / 60);
+    const s = total % 60;
+    if (h > 0) {
+      return `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+    }
+    return `${m}:${String(s).padStart(2, '0')}`;
+  };
+
   const chooseReciter = (id: string) => {
     setReciterId(id);
     setReciterModalOpen(false);
@@ -318,6 +399,52 @@ export default function QuranReaderScreen(): React.JSX.Element {
         >
           <Text style={styles.playSurahText}>▶  {t('quran.playSurah')}</Text>
         </TouchableOpacity>
+
+        {(!!tilawatTracks?.length || !!tafseerAudioTracks?.length) && (
+          <View style={[styles.scBtnRow, isRTL && styles.rowRTL]}>
+            {!!tilawatTracks?.length && (
+              <View style={styles.scBtn}>
+                <TouchableOpacity
+                  style={styles.scBtnMain}
+                  onPress={playTilawat}
+                  activeOpacity={0.85}
+                >
+                  <Text style={styles.scBtnText} numberOfLines={1}>
+                    🎧 {language === 'ur' ? 'تلاوت + ترجمہ' : 'Tilawat + Tarjuma'}
+                  </Text>
+                  <Text style={styles.scBtnSub} numberOfLines={1}>
+                    {language === 'ur' ? 'شیخ سعید' : 'Sheikh Saeed'}
+                  </Text>
+                </TouchableOpacity>
+                {canDownload && (
+                  <TouchableOpacity
+                    style={styles.scDl}
+                    onPress={() => onDownloadPress(tilawatTracks[0])}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={styles.scDlText}>
+                      {downloadLabel(tilawatTracks[0].trackId)}
+                    </Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            )}
+            {!!tafseerAudioTracks?.length && (
+              <TouchableOpacity
+                style={styles.scBtn}
+                onPress={() => setTafseerAudioModalOpen(true)}
+                activeOpacity={0.85}
+              >
+                <Text style={styles.scBtnText} numberOfLines={1}>
+                  📚 {language === 'ur' ? 'تفسیر آڈیو' : 'Tafseer Audio'}
+                </Text>
+                <Text style={styles.scBtnSub} numberOfLines={1}>
+                  {tafseerAudioTracks.length} {language === 'ur' ? 'دروس' : 'lessons'}
+                </Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        )}
       </View>
 
       <ScrollView
@@ -675,6 +802,73 @@ export default function QuranReaderScreen(): React.JSX.Element {
         </Pressable>
       </Modal>
 
+      <Modal
+        visible={tafseerAudioModalOpen}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setTafseerAudioModalOpen(false)}
+      >
+        <Pressable
+          style={styles.modalBackdrop}
+          onPress={() => setTafseerAudioModalOpen(false)}
+        >
+          <Pressable style={styles.modalCard}>
+            <Text style={[styles.modalTitle, isRTL && styles.textRTL]}>
+              {language === 'ur'
+                ? `تفسیر — ${surahName} (شیخ سعید)`
+                : `Tafseer — ${surahName} (Sheikh Saeed)`}
+            </Text>
+            <ScrollView style={styles.lessonScroll}>
+              {(tafseerAudioTracks ?? []).map((lesson, index) => {
+                const active = currentTrack?.id === `sc-${lesson.trackId}`;
+                return (
+                  <TouchableOpacity
+                    key={lesson.trackId}
+                    style={[
+                      styles.reciterRow,
+                      active && styles.reciterRowActive,
+                      isRTL && styles.rowRTL,
+                    ]}
+                    onPress={() => playTafseerLesson(index)}
+                    activeOpacity={0.7}
+                  >
+                    <View style={styles.reciterRowTextCol}>
+                      <Text
+                        style={[
+                          styles.reciterRowName,
+                          active && styles.reciterRowNameActive,
+                          isRTL && styles.textRTL,
+                        ]}
+                        numberOfLines={2}
+                      >
+                        {lesson.title}
+                      </Text>
+                      {!!formatDuration(lesson.duration) && (
+                        <Text style={[styles.reciterRowSub, isRTL && styles.textRTL]}>
+                          {formatDuration(lesson.duration)}
+                        </Text>
+                      )}
+                    </View>
+                    {canDownload && (
+                      <TouchableOpacity
+                        style={styles.lessonDl}
+                        onPress={() => onDownloadPress(lesson)}
+                        activeOpacity={0.7}
+                      >
+                        <Text style={styles.scDlText}>
+                          {downloadLabel(lesson.trackId)}
+                        </Text>
+                      </TouchableOpacity>
+                    )}
+                    <Text style={styles.reciterCheck}>{active ? '▶' : '🔊'}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
       <AudioPlayerBar />
     </SafeAreaView>
   );
@@ -768,6 +962,60 @@ const createStyles = (theme: Theme) =>
       fontSize: typography.fontSize.sm,
       fontWeight: typography.fontWeight.bold,
       color: colors.neutral[0],
+    },
+    scBtnRow: {
+      flexDirection: 'row',
+      gap: spacing[2],
+      marginTop: spacing[2],
+    },
+    scBtn: {
+      flex: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: theme.bgCard,
+      borderRadius: borderRadius.button,
+      borderWidth: 1,
+      borderColor: theme.accentGreen,
+      paddingHorizontal: spacing[2],
+      paddingVertical: spacing[2],
+    },
+    scBtnMain: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    scDl: {
+      paddingLeft: spacing[2],
+      minWidth: 38,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    scDlText: {
+      fontSize: typography.fontSize.base,
+      color: theme.accentGreen,
+      fontWeight: typography.fontWeight.bold,
+    },
+    lessonDl: {
+      paddingHorizontal: spacing[2],
+      minWidth: 44,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    scBtnText: {
+      fontFamily: typography.fontFamily.urdu,
+      fontSize: typography.fontSize.sm,
+      fontWeight: typography.fontWeight.bold,
+      color: theme.accentGreen,
+    },
+    scBtnSub: {
+      fontFamily: typography.fontFamily.urdu,
+      fontSize: typography.fontSize.xs,
+      color: theme.textMuted,
+      marginTop: 2,
+    },
+    lessonScroll: {
+      maxHeight: 380,
     },
     scroll: {
       flex: 1,
