@@ -21,7 +21,7 @@ import { quranService } from '@/services/quranService';
 import { useAudioStore, State } from '@/store/useAudioStore';
 import { usePreferencesStore } from '@/store/usePreferencesStore';
 import { getSurahMeta } from '@/data/surahMeta';
-import { getReciter, ayahAudioUrl, ttsAudioUrl, splitForTts } from '@/data/reciters';
+import { getReciter, ayahAudioUrl } from '@/data/reciters';
 import { colors, spacing, typography, borderRadius, shadows } from '@/tokens';
 import { QuranAyah, QuranSurahSummary } from '@shared-types';
 
@@ -42,7 +42,6 @@ export default function SurahListScreen(): React.JSX.Element {
   const currentTrack = useAudioStore((s) => s.currentTrack);
   const playbackState = useAudioStore((s) => s.playbackState);
   const reciterId = usePreferencesStore((s) => s.reciterId);
-  const playTranslation = usePreferencesStore((s) => s.playTranslation);
 
   const [query, setQuery] = useState('');
   const [revelation, setRevelation] = useState<RevelationFilter>('all');
@@ -90,35 +89,16 @@ export default function SurahListScreen(): React.JSX.Element {
         staleTime: Infinity,
       });
       const name = surahName(surah.surah);
-      const tracks = (ayahs ?? []).flatMap((a) => {
-        const translationText = language === 'ur' ? a.urdu : a.translation;
-        const arabic = {
-          id: a.id,
-          url: ayahAudioUrl(reciter, surah.surah, a.ayah),
-          title: `${name} ${surah.surah}:${a.ayah}`,
-          artist: reciter.name,
-          arabic: a.arabic,
-          translation: translationText ?? undefined,
-          subtitle: `${name} • ${surah.surah}:${a.ayah}`,
-          surahNumber: surah.surah,
-        };
-        if (playTranslation && translationText) {
-          const label = language === 'ur' ? 'ترجمہ' : 'Translation';
-          const chunks = splitForTts(translationText);
-          const trTracks = chunks.map((chunk, i) => ({
-            id: chunks.length > 1 ? `${a.id}::${language}::${i}` : `${a.id}::${language}`,
-            url: ttsAudioUrl(chunk, language),
-            title: `${name} ${surah.surah}:${a.ayah} — ${label}`,
-            artist: language === 'ur' ? 'اردو ترجمہ (آواز)' : 'Translation (Voice)',
-            arabic: a.arabic,
-            translation: translationText ?? undefined,
-            subtitle: `${name} • ${surah.surah}:${a.ayah} • ${label}`,
-            surahNumber: surah.surah,
-          }));
-          return [arabic, ...trTracks];
-        }
-        return [arabic];
-      });
+      const tracks = (ayahs ?? []).map((a) => ({
+        id: a.id,
+        url: ayahAudioUrl(reciter, surah.surah, a.ayah),
+        title: `${name} ${surah.surah}:${a.ayah}`,
+        artist: reciter.name,
+        arabic: a.arabic,
+        translation: (language === 'ur' ? a.urdu : a.translation) ?? undefined,
+        subtitle: `${name} • ${surah.surah}:${a.ayah}`,
+        surahNumber: surah.surah,
+      }));
       if (tracks.length === 0) return;
       setAutoAdvanceSurah(true);
       await playTrack(tracks[0]);
