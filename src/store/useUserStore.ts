@@ -4,6 +4,23 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export type FiqhMethod = 'Hanafi' | 'Shafi' | 'Maliki' | 'Hanbali';
 
+export type PrayerMode = 'auto' | 'manual';
+
+export interface ManualRange {
+  start: string;
+  end: string;
+}
+
+export type ManualTimes = Record<'fajr' | 'dhuhr' | 'asr' | 'maghrib' | 'isha', ManualRange>;
+
+const EMPTY_MANUAL_TIMES: ManualTimes = {
+  fajr: { start: '', end: '' },
+  dhuhr: { start: '', end: '' },
+  asr: { start: '', end: '' },
+  maghrib: { start: '', end: '' },
+  isha: { start: '', end: '' },
+};
+
 export interface LocationData {
   latitude: number;
   longitude: number;
@@ -23,6 +40,8 @@ interface UserState {
   fiqhMethod: FiqhMethod;
   fiqhOverridden: boolean;
   calculationMethod: string;
+  prayerMode: PrayerMode;
+  manualTimes: ManualTimes;
   location: LocationData | null;
   isLoggedIn: boolean;
   user: AuthUser | null;
@@ -35,6 +54,8 @@ interface UserState {
   applyAdminPrayerDefaults: (defaults: {
     fiqh: FiqhMethod;
     calculationMethod: string;
+    mode: PrayerMode;
+    manualTimes: ManualTimes;
   }) => void;
   setLocation: (location: LocationData | null) => void;
   setTokens: (token: string, refreshToken: string) => void;
@@ -50,6 +71,8 @@ export const useUserStore = create<UserState>()(
       fiqhMethod: 'Hanafi',
       fiqhOverridden: false,
       calculationMethod: 'Karachi',
+      prayerMode: 'auto',
+      manualTimes: EMPTY_MANUAL_TIMES,
       location: {
         latitude: 21.4225, // Default to Mecca
         longitude: 39.8262,
@@ -62,9 +85,11 @@ export const useUserStore = create<UserState>()(
 
       setLanguage: (language) => set({ language }),
       setFiqhMethod: (fiqhMethod) => set({ fiqhMethod, fiqhOverridden: true }),
-      applyAdminPrayerDefaults: ({ fiqh, calculationMethod }) =>
+      applyAdminPrayerDefaults: ({ fiqh, calculationMethod, mode, manualTimes }) =>
         set((state) => ({
           calculationMethod,
+          prayerMode: mode,
+          manualTimes,
           fiqhMethod: state.fiqhOverridden ? state.fiqhMethod : fiqh,
         })),
       setLocation: (location) => set({ location }),
@@ -76,7 +101,7 @@ export const useUserStore = create<UserState>()(
     {
       name: 'dawat-user-storage',
       storage: createJSONStorage(() => AsyncStorage),
-      version: 2,
+      version: 3,
       migrate: (persistedState, version) => {
         if (version < 1 && persistedState && typeof persistedState === 'object') {
           (persistedState as UserState).language = 'ur';
@@ -85,6 +110,11 @@ export const useUserStore = create<UserState>()(
           const state = persistedState as UserState;
           state.fiqhOverridden = false;
           state.calculationMethod = 'Karachi';
+        }
+        if (version < 3 && persistedState && typeof persistedState === 'object') {
+          const state = persistedState as UserState;
+          state.prayerMode = 'auto';
+          state.manualTimes = EMPTY_MANUAL_TIMES;
         }
         return persistedState as UserState;
       },

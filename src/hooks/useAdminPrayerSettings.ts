@@ -21,6 +21,11 @@ export function useAdminPrayerSettings(): void {
     const fiqh = FIQH_VALUES.includes(data.fiqh as FiqhMethod)
       ? (data.fiqh as FiqhMethod)
       : 'Hanafi';
-    applyAdminPrayerDefaults({ fiqh, calculationMethod: data.calculationMethod });
+    applyAdminPrayerDefaults({
+      fiqh,
+      calculationMethod: data.calculationMethod,
+      mode: data.mode === 'manual' ? 'manual' : 'auto',
+      manualTimes: data.manualTimes,
+    });
   }, [data, applyAdminPrayerDefaults]);
 }

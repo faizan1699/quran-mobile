@@ -60,6 +60,8 @@ export function usePrayerTimes(): FormattedPrayerTimes {
   const location = useUserStore((state) => state.location);
   const fiqhMethod = useUserStore((state) => state.fiqhMethod);
   const calculationMethod = useUserStore((state) => state.calculationMethod);
+  const prayerMode = useUserStore((state) => state.prayerMode);
+  const manualTimes = useUserStore((state) => state.manualTimes);
 
   const [now, setNow] = useState(() => new Date());
   useEffect(() => {
@@ -73,7 +75,10 @@ export function usePrayerTimes(): FormattedPrayerTimes {
 
     try {
       const params = buildPrayerParams(calculationMethod, fiqhMethod);
-      const window = computePrayerWindow(lat, lng, now, params);
+      const window = computePrayerWindow(lat, lng, now, params, {
+        mode: prayerMode,
+        manualTimes,
+      });
 
       return {
         fajr: formatTime(window.times.fajr),
@@ -93,5 +98,5 @@ export function usePrayerTimes(): FormattedPrayerTimes {
       console.error('Failed to calculate prayer times:', error);
       return DEFAULT_TIMES;
     }
-  }, [location, fiqhMethod, calculationMethod, now]);
+  }, [location, fiqhMethod, calculationMethod, prayerMode, manualTimes, now]);
 }
