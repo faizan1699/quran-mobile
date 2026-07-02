@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { StatusBar, View, Image } from 'react-native';
+import { StatusBar, View, Text } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useFonts } from 'expo-font';
@@ -19,9 +19,7 @@ import { usePreferencesStore, FONT_SCALE_VALUES } from '@/store/usePreferencesSt
 import { applySelectedFonts } from '@/theme/scriptFonts';
 import { colors } from '@/tokens';
 import SplashBackground from '@/components/splash/SplashBackground';
-
-const splashLogo = require('./assets/splash/logo.png');
-const splashTitle = require('./assets/splash/title.png');
+import SplashBadge from '@/components/splash/SplashBadge';
 
 // Patch RN's Text once so the app-wide font-size preference scales every label.
 applyGlobalFontScalePatch();
@@ -88,12 +86,19 @@ function AppContent(): React.JSX.Element {
         <StatusBar barStyle="light-content" backgroundColor={colors.splash.gradient[0]} translucent />
         <SplashBackground>
           <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-            <Image source={splashLogo} style={{ width: 138, height: 138 }} resizeMode="contain" />
-            <Image
-              source={splashTitle}
-              style={{ width: 232, height: 78, marginTop: 46 }}
-              resizeMode="contain"
-            />
+            <SplashBadge size={138} />
+            <Text
+              style={{
+                fontFamily: 'Amiri',
+                fontSize: 48,
+                lineHeight: 72,
+                marginTop: 40,
+                color: colors.splash.title,
+                textAlign: 'center',
+              }}
+            >
+              القرآن الكريم
+            </Text>
           </View>
         </SplashBackground>
       </View>

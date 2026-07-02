@@ -26,12 +26,6 @@ const ENGLISH_SAMPLE = 'The Quran — Read & Reflect';
 
 export const ARABIC_FONTS: ScriptFontOption[] = [
   {
-    family: 'AlQalam Taj Nastaleeq',
-    label: 'AlQalam Taj',
-    sample: ARABIC_SAMPLE,
-    previewFamily: 'TajPreview',
-  },
-  {
     family: 'Scheherazade New',
     label: 'Scheherazade',
     sample: ARABIC_SAMPLE,
@@ -50,6 +44,12 @@ export const URDU_FONTS: ScriptFontOption[] = [
     label: 'Jameel Noori',
     sample: URDU_SAMPLE,
     previewFamily: 'NooriPreview',
+  },
+  {
+    family: 'AlQalam Taj Nastaleeq',
+    label: 'AlQalam Taj',
+    sample: URDU_SAMPLE,
+    previewFamily: 'TajPreview',
   },
   {
     family: 'Noto Nastaliq Urdu',

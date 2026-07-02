@@ -1,6 +1,6 @@
 export const typography = {
   fontFamily: {
-    arabic: 'AlQalam Taj Nastaleeq',
+    arabic: 'Scheherazade New',
     urdu: 'Jameel Noori Nastaleeq',
     english: 'Montserrat',
     heading: 'Montserrat',

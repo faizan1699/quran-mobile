@@ -1,22 +1,18 @@
 import React, { useEffect, useRef } from 'react';
-import { View, Image, StyleSheet, Animated, Easing, Platform, StatusBar } from 'react-native';
+import { View, Text, StyleSheet, Animated, Easing, Platform, StatusBar } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import Svg, { Defs, RadialGradient, Stop, Circle } from 'react-native-svg';
 import { RootStackParamList } from '@/navigation/types';
 import { colors, animation } from '@/tokens';
 import SplashBackground from '@/components/splash/SplashBackground';
+import SplashBadge from '@/components/splash/SplashBadge';
 
 const USE_NATIVE_DRIVER = Platform.OS !== 'web';
 const SPLASH_HOLD = animation.duration.splash;
 
 const LOGO_SIZE = 138;
-const TITLE_WIDTH = 232;
-const TITLE_HEIGHT = 78;
 const GLOW_SIZE = LOGO_SIZE * 2.4;
-
-const logoSource = require('../../assets/splash/logo.png');
-const titleSource = require('../../assets/splash/title.png');
 
 function Glow({ size }: { size: number }): React.JSX.Element {
   return (
@@ -168,13 +164,13 @@ export default function SplashScreen(): React.JSX.Element {
             >
               <Glow size={GLOW_SIZE} />
             </Animated.View>
-            <Image source={logoSource} style={styles.logo} resizeMode="contain" />
+            <SplashBadge size={LOGO_SIZE} />
           </Animated.View>
 
           <Animated.View
             style={{ opacity: titleOpacity, transform: [{ translateY: titleShift }] }}
           >
-            <Image source={titleSource} style={styles.title} resizeMode="contain" />
+            <Text style={styles.title}>القرآن الكريم</Text>
           </Animated.View>
         </View>
       </SplashBackground>
@@ -203,13 +199,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  logo: {
-    width: LOGO_SIZE,
-    height: LOGO_SIZE,
-  },
   title: {
-    width: TITLE_WIDTH,
-    height: TITLE_HEIGHT,
-    marginTop: 46,
+    fontFamily: 'Amiri',
+    fontSize: 48,
+    lineHeight: 72,
+    color: colors.splash.title,
+    textAlign: 'center',
+    marginTop: 40,
+    textShadowColor: 'rgba(244,230,174,0.35)',
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 14,
+    includeFontPadding: false,
   },
 });
