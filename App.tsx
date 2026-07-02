@@ -9,6 +9,7 @@ import { ShareProvider } from '@/components/share/ShareProvider';
 import { useDeviceLocation } from '@/hooks/useDeviceLocation';
 import { usePrayerAzanScheduler } from '@/hooks/usePrayerAzanScheduler';
 import { useReminderScheduler } from '@/hooks/useReminderScheduler';
+import { useAdminPrayerSettings } from '@/hooks/useAdminPrayerSettings';
 import { useTheme } from '@/theme';
 import { appFonts } from '@/theme/fonts';
 import {
@@ -48,6 +49,7 @@ function AppContent(): React.JSX.Element {
 
   usePrayerAzanScheduler();
   useReminderScheduler();
+  useAdminPrayerSettings();
 
   // Keep the per-script text-scale multipliers in sync with the stored
   // preference. Reading them here re-renders AppContent (and the active screen)

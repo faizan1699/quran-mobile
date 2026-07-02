@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { Alert, AppState, AppStateStatus } from 'react-native';
 import { Coordinates, PrayerTimes } from 'adhan';
-import { getAdhanParams } from '@/hooks/usePrayerTimes';
+import { buildPrayerParams } from '@/lib/prayerWindow';
 import { useUserStore } from '@/store/useUserStore';
 import { usePreferencesStore } from '@/store/usePreferencesStore';
 import { useAudioStore, State } from '@/store/useAudioStore';
@@ -30,6 +30,7 @@ export function usePrayerAzanScheduler(): void {
   const prayerAlerts = usePreferencesStore((s) => s.prayerAlerts);
   const location = useUserStore((s) => s.location);
   const fiqhMethod = useUserStore((s) => s.fiqhMethod);
+  const calculationMethod = useUserStore((s) => s.calculationMethod);
   const language = useUserStore((s) => s.language);
 
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -46,7 +47,7 @@ export function usePrayerAzanScheduler(): void {
     const lat = location?.latitude ?? FALLBACK_LAT;
     const lng = location?.longitude ?? FALLBACK_LNG;
     const coords = new Coordinates(lat, lng);
-    const params = getAdhanParams(fiqhMethod);
+    const params = buildPrayerParams(calculationMethod, fiqhMethod);
 
     const nextAzan = (from: Date): NextAzan => {
       const today = new PrayerTimes(coords, from, params);
@@ -108,5 +109,5 @@ export function usePrayerAzanScheduler(): void {
       timerRef.current = null;
       sub.remove();
     };
-  }, [prayerAlerts, location, fiqhMethod, language]);
+  }, [prayerAlerts, location, fiqhMethod, calculationMethod, language]);
 }
