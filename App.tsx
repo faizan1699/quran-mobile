@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { StatusBar, View, ActivityIndicator } from 'react-native';
+import { StatusBar, View, Image } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useFonts } from 'expo-font';
@@ -18,6 +18,10 @@ import {
 import { usePreferencesStore, FONT_SCALE_VALUES } from '@/store/usePreferencesStore';
 import { applySelectedFonts } from '@/theme/scriptFonts';
 import { colors } from '@/tokens';
+import SplashBackground from '@/components/splash/SplashBackground';
+
+const splashLogo = require('./assets/splash/logo.png');
+const splashTitle = require('./assets/splash/title.png');
 
 // Patch RN's Text once so the app-wide font-size preference scales every label.
 applyGlobalFontScalePatch();
@@ -80,16 +84,18 @@ function AppContent(): React.JSX.Element {
   // the app never gets stuck on the splash.
   if (!fontsLoaded && !fontError) {
     return (
-      <View
-        style={{
-          flex: 1,
-          backgroundColor: colors.primary[900],
-          justifyContent: 'center',
-          alignItems: 'center',
-        }}
-      >
-        <StatusBar barStyle="light-content" backgroundColor={colors.primary[900]} />
-        <ActivityIndicator size="large" color={colors.gold[500]} />
+      <View style={{ flex: 1 }}>
+        <StatusBar barStyle="light-content" backgroundColor={colors.splash.gradient[0]} translucent />
+        <SplashBackground>
+          <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+            <Image source={splashLogo} style={{ width: 138, height: 138 }} resizeMode="contain" />
+            <Image
+              source={splashTitle}
+              style={{ width: 232, height: 78, marginTop: 46 }}
+              resizeMode="contain"
+            />
+          </View>
+        </SplashBackground>
       </View>
     );
   }
