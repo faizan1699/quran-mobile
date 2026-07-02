@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { Platform, Alert } from 'react-native';
+import { Platform, Alert, AppState } from 'react-native';
 import {
   createAudioPlayer,
   setAudioModeAsync,
@@ -13,6 +13,7 @@ import { getSurahMeta } from '@/data/surahMeta';
 import { usePreferencesStore } from '@/store/usePreferencesStore';
 import { useUserStore } from '@/store/useUserStore';
 import { useAudioDownloadStore } from '@/store/useAudioDownloadStore';
+import { useResumeStore } from '@/store/useResumeStore';
 
 type SpeechModule = {
   speak: (text: string, options?: Record<string, unknown>) => void;
@@ -149,7 +150,7 @@ export enum PlaybackState {
 
 export const State = PlaybackState;
 
-interface AudioTrackInfo {
+export interface AudioTrackInfo {
   id: string;
   url: string;
   title: string;
@@ -169,6 +170,12 @@ interface AudioTrackInfo {
   surahSync?: boolean;
 }
 
+interface ResumeSessionInput {
+  track: AudioTrackInfo;
+  queue: AudioTrackInfo[];
+  position: number;
+}
+
 interface AudioState {
   currentTrack: AudioTrackInfo | null;
   playbackState: PlaybackState;
@@ -184,6 +191,7 @@ interface AudioState {
   playTrack: (track: AudioTrackInfo, startSeconds?: number) => Promise<void>;
   togglePlay: () => Promise<void>;
   setQueue: (tracks: AudioTrackInfo[]) => Promise<void>;
+  resumeSession: (session: ResumeSessionInput) => Promise<void>;
   setAutoAdvanceSurah: (enabled: boolean) => void;
   skipToNext: () => Promise<void>;
   skipToPrevious: () => Promise<void>;
@@ -214,6 +222,7 @@ let lastTrack: AudioTrackInfo | null = null;
 let lastStartSeconds = 0;
 let ttsTimer: ReturnType<typeof setInterval> | null = null;
 let ttsWatchdog: ReturnType<typeof setTimeout> | null = null;
+let resumeListenerBound = false;
 
 const LOAD_TIMEOUT_MS = 9000;
 const MAX_LOAD_RETRIES = 2;
@@ -412,6 +421,24 @@ export const useAudioStore = create<AudioState>((set, get) => {
       loadWatchdog = null;
     }
   };
+
+  const persistResume = () => {
+    const { currentTrack, queue, position } = get();
+    if (!currentTrack) return;
+    useResumeStore.getState().saveSession({
+      track: currentTrack,
+      queue,
+      position: Math.max(0, position),
+      updatedAt: Date.now(),
+    });
+  };
+
+  if (!resumeListenerBound) {
+    resumeListenerBound = true;
+    AppState.addEventListener('change', (next) => {
+      if (next !== 'active') persistResume();
+    });
+  }
 
   const teardownPlayer = () => {
     clearLoadWatchdog();
@@ -670,6 +697,7 @@ export const useAudioStore = create<AudioState>((set, get) => {
 
         await ensureAudioMode();
         startPlayback(track, startSeconds);
+        persistResume();
 
         if (track.id.startsWith('sc-') && /^https?:/i.test(track.url)) {
           const tid = Number(track.id.slice(3));
@@ -696,6 +724,7 @@ export const useAudioStore = create<AudioState>((set, get) => {
             clearTtsTimer();
             stopSpeech();
             set({ playbackState: PlaybackState.Paused });
+            persistResume();
           } else {
             shouldBePlaying = true;
             await ensureAudioMode();
@@ -713,6 +742,7 @@ export const useAudioStore = create<AudioState>((set, get) => {
           clearLoadWatchdog();
           player.pause();
           set({ playbackState: PlaybackState.Paused });
+          persistResume();
         } else {
           shouldBePlaying = true;
           loadRetries = 0;
@@ -740,7 +770,17 @@ export const useAudioStore = create<AudioState>((set, get) => {
       if (tracks.length > 0 && !get().currentTrack) {
         await get().playTrack(tracks[0]);
       }
+      persistResume();
       scheduleDurationPrefetch(tracks);
+    },
+
+    resumeSession: async (session) => {
+      try {
+        await get().playTrack(session.track, session.position);
+        await get().setQueue(session.queue);
+      } catch (error) {
+        console.error('Error resuming session:', error);
+      }
     },
 
     setAutoAdvanceSurah: (enabled) => set({ autoAdvanceSurah: enabled }),
@@ -790,6 +830,7 @@ export const useAudioStore = create<AudioState>((set, get) => {
 
     resetPlayer: async () => {
       try {
+        persistResume();
         shouldBePlaying = false;
         continuousAdvance = false;
         loadRetries = 0;

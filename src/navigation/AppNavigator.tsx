@@ -1,6 +1,9 @@
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
-import { NavigationContainer as RawNavigationContainer } from '@react-navigation/native';
+import {
+  NavigationContainer as RawNavigationContainer,
+  useNavigationContainerRef,
+} from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import {
   createBottomTabNavigator,
@@ -47,6 +50,7 @@ import NotesListScreen from '@/screens/NotesListScreen';
 import NoteEditorScreen from '@/screens/NoteEditorScreen';
 import PlayerScreen from '@/screens/PlayerScreen';
 import { MiniPlayer } from '@/components/MiniPlayer';
+import { GlobalMiniPlayer } from '@/components/GlobalMiniPlayer';
 
 // Import Token Styles
 import { typography } from '@/tokens';
@@ -238,51 +242,65 @@ function TabNavigator() {
 const RootStackNavigator = RootStack.Navigator as any;
 const RootStackScreen = RootStack.Screen as any;
 
-const NavigationContainer = RawNavigationContainer as unknown as React.ComponentType<{
-  children?: React.ReactNode;
-}>;
+const NavigationContainer = RawNavigationContainer as any;
 
 export function AppNavigator(): React.JSX.Element {
+  const navRef = useNavigationContainerRef();
+  const [rootRoute, setRootRoute] = React.useState<string | undefined>(undefined);
+
+  const syncRootRoute = React.useCallback(() => {
+    const state = navRef.getRootState?.();
+    if (state && typeof state.index === 'number') {
+      setRootRoute(state.routes[state.index]?.name);
+    }
+  }, [navRef]);
+
   return (
-    <NavigationContainer>
-      <RootStackNavigator screenOptions={{ headerShown: false }}>
-        <RootStackScreen name="Splash" component={SplashScreen} />
-        <RootStackScreen name="MainTabs" component={TabNavigator} />
-        <RootStackScreen
-          name="Profile"
-          component={ProfileScreen}
-          options={{ presentation: 'card' }}
-        />
-        <RootStackScreen
-          name="Auth"
-          component={AuthScreen}
-          options={{ presentation: 'modal' }}
-        />
-        <RootStackScreen
-          name="ChangePassword"
-          component={ChangePasswordScreen}
-          options={{ presentation: 'card' }}
-        />
-        <RootStackScreen name="BookDetail" component={BookDetailScreen} />
-        <RootStackScreen name="Reader" component={ReaderScreen} />
-        <RootStackScreen name="QuranReader" component={QuranReaderScreen} />
-        <RootStackScreen
-          name="Player"
-          component={PlayerScreen}
-          options={{ presentation: 'fullScreenModal', animation: 'slide_from_bottom' }}
-        />
-        <RootStackScreen name="NotesList" component={NotesListScreen} />
-        <RootStackScreen
-          name="NoteEditor"
-          component={NoteEditorScreen}
-          options={{ presentation: 'card' }}
-        />
-      </RootStackNavigator>
+    <NavigationContainer ref={navRef} onReady={syncRootRoute} onStateChange={syncRootRoute}>
+      <View style={styles.root}>
+        <RootStackNavigator screenOptions={{ headerShown: false }}>
+          <RootStackScreen name="Splash" component={SplashScreen} />
+          <RootStackScreen name="MainTabs" component={TabNavigator} />
+          <RootStackScreen
+            name="Profile"
+            component={ProfileScreen}
+            options={{ presentation: 'card' }}
+          />
+          <RootStackScreen
+            name="Auth"
+            component={AuthScreen}
+            options={{ presentation: 'modal' }}
+          />
+          <RootStackScreen
+            name="ChangePassword"
+            component={ChangePasswordScreen}
+            options={{ presentation: 'card' }}
+          />
+          <RootStackScreen name="BookDetail" component={BookDetailScreen} />
+          <RootStackScreen name="Reader" component={ReaderScreen} />
+          <RootStackScreen name="QuranReader" component={QuranReaderScreen} />
+          <RootStackScreen
+            name="Player"
+            component={PlayerScreen}
+            options={{ presentation: 'fullScreenModal', animation: 'slide_from_bottom' }}
+          />
+          <RootStackScreen name="NotesList" component={NotesListScreen} />
+          <RootStackScreen
+            name="NoteEditor"
+            component={NoteEditorScreen}
+            options={{ presentation: 'card' }}
+          />
+        </RootStackNavigator>
+        <GlobalMiniPlayer rootRoute={rootRoute} navRef={navRef} />
+      </View>
     </NavigationContainer>
   );
 }
 
 const styles = StyleSheet.create({
+  root: {
+    flex: 1,
+  },
   tabBar: {
     height: 64,
     borderTopWidth: 1,

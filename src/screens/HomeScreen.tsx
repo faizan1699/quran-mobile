@@ -12,6 +12,7 @@ import { FadeInView } from '@/components/FadeInView';
 import { HeroDateBar } from '@/components/HeroDateBar';
 import { HomeFeatureTabs } from '@/components/HomeFeatureTabs';
 import { PrayerTimesCard } from '@/components/PrayerTimesCard';
+import { ResumeCard } from '@/components/ResumeCard';
 import { Flash } from '@/data/flashes';
 import { spacing, typography, borderRadius, shadows } from '@/tokens';
 import { RootStackParamList } from '@/navigation/types';
@@ -83,6 +84,10 @@ export default function HomeScreen(): React.JSX.Element {
         {/* Hero: today's Gregorian + Hijri date */}
         <FadeInView style={styles.section} offsetY={12}>
           <HeroDateBar />
+        </FadeInView>
+
+        <FadeInView style={styles.section} delay={60} offsetY={12}>
+          <ResumeCard />
         </FadeInView>
 
         {/* Auto-rotating Flashes carousel */}
