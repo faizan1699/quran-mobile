@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { StatusBar, View, ActivityIndicator } from 'react-native';
+import { StatusBar, View, Text } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useFonts } from 'expo-font';
@@ -9,6 +9,7 @@ import { ShareProvider } from '@/components/share/ShareProvider';
 import { useDeviceLocation } from '@/hooks/useDeviceLocation';
 import { usePrayerAzanScheduler } from '@/hooks/usePrayerAzanScheduler';
 import { useReminderScheduler } from '@/hooks/useReminderScheduler';
+import { useAdminPrayerSettings } from '@/hooks/useAdminPrayerSettings';
 import { useTheme } from '@/theme';
 import { appFonts } from '@/theme/fonts';
 import {
@@ -18,6 +19,8 @@ import {
 import { usePreferencesStore, FONT_SCALE_VALUES } from '@/store/usePreferencesStore';
 import { applySelectedFonts } from '@/theme/scriptFonts';
 import { colors } from '@/tokens';
+import SplashBackground from '@/components/splash/SplashBackground';
+import SplashBadge from '@/components/splash/SplashBadge';
 
 // Patch RN's Text once so the app-wide font-size preference scales every label.
 applyGlobalFontScalePatch();
@@ -46,6 +49,7 @@ function AppContent(): React.JSX.Element {
 
   usePrayerAzanScheduler();
   useReminderScheduler();
+  useAdminPrayerSettings();
 
   // Keep the per-script text-scale multipliers in sync with the stored
   // preference. Reading them here re-renders AppContent (and the active screen)
@@ -80,16 +84,25 @@ function AppContent(): React.JSX.Element {
   // the app never gets stuck on the splash.
   if (!fontsLoaded && !fontError) {
     return (
-      <View
-        style={{
-          flex: 1,
-          backgroundColor: colors.primary[900],
-          justifyContent: 'center',
-          alignItems: 'center',
-        }}
-      >
-        <StatusBar barStyle="light-content" backgroundColor={colors.primary[900]} />
-        <ActivityIndicator size="large" color={colors.gold[500]} />
+      <View style={{ flex: 1 }}>
+        <StatusBar barStyle="light-content" backgroundColor={colors.splash.gradient[0]} translucent />
+        <SplashBackground>
+          <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+            <SplashBadge size={138} />
+            <Text
+              style={{
+                fontFamily: 'Amiri',
+                fontSize: 48,
+                lineHeight: 72,
+                marginTop: 40,
+                color: colors.splash.title,
+                textAlign: 'center',
+              }}
+            >
+              القرآن الكريم
+            </Text>
+          </View>
+        </SplashBackground>
       </View>
     );
   }

@@ -1,9 +1,9 @@
 export const typography = {
   fontFamily: {
     arabic: 'Scheherazade New',
-    urdu: 'Noto Nastaliq Urdu',
-    english: 'Inter',
-    heading: 'Inter',
+    urdu: 'Jameel Noori Nastaleeq',
+    english: 'Montserrat',
+    heading: 'Montserrat',
   },
   fontSize: {
     xs: 12,

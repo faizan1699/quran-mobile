@@ -29,15 +29,16 @@ import { AudioPlayerBar } from '@/components/AudioPlayerBar';
 import { PlayingWaves } from '@/components/PlayingWaves';
 import { AyahArabic } from '@/components/AyahArabic';
 import { useShareSheet } from '@/components/share/ShareProvider';
-import { useSurahAyahs, useTafseerSections } from '@/hooks/useQuran';
-import { getSurahMeta } from '@/data/surahMeta';
 import {
-  RECITERS,
-  getReciter,
-  ayahAudioUrl,
-  translationAudioUrl,
-  translationReciterFor,
-} from '@/data/reciters';
+  useSurahAyahs,
+  useTafseerSections,
+  useTilawatTracks,
+  useTafseerAudioTracks,
+} from '@/hooks/useQuran';
+import { scStreamUrl, ScTrack } from '@/services/audioContentService';
+import { useAudioDownloadStore } from '@/store/useAudioDownloadStore';
+import { getSurahMeta } from '@/data/surahMeta';
+import { RECITERS, getReciter, ayahAudioUrl } from '@/data/reciters';
 import { useTheme, Theme } from '@/theme';
 import { colors, spacing, typography, borderRadius, shadows } from '@/tokens';
 import { RootStackParamList } from '@/navigation/types';
@@ -51,6 +52,8 @@ type IconProps = { name: string; size?: number; color?: string };
 const Ionicons = RawIonicons as unknown as React.ComponentType<IconProps>;
 
 const BISMILLAH = 'بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ';
+
+const SHOW_RECITER_SELECTOR = false;
 
 const toArabicDigits = (n: number): string =>
   String(n).replace(/[0-9]/g, (d) => '٠١٢٣٤٥٦٧٨٩'[Number(d)]);
@@ -80,6 +83,7 @@ export default function QuranReaderScreen(): React.JSX.Element {
 
   const playTrack = useAudioStore((s) => s.playTrack);
   const setQueue = useAudioStore((s) => s.setQueue);
+  const setAutoAdvanceSurah = useAudioStore((s) => s.setAutoAdvanceSurah);
   const togglePlay = useAudioStore((s) => s.togglePlay);
   const currentTrack = useAudioStore((s) => s.currentTrack);
   const playbackState = useAudioStore((s) => s.playbackState);
@@ -101,6 +105,17 @@ export default function QuranReaderScreen(): React.JSX.Element {
   const [fontModifier, setFontModifier] = useState(0); // 0 -> 4 -> 8 -> 12
   const [reciterModalOpen, setReciterModalOpen] = useState(false);
   const [readMode, setReadMode] = useState(false);
+  const [displayMode, setDisplayMode] = useState<'both' | 'arabic' | 'translation'>('both');
+  const [tafseerAudioModalOpen, setTafseerAudioModalOpen] = useState(false);
+
+  const { data: tilawatTracks } = useTilawatTracks(surahNumber);
+  const { data: tafseerAudioTracks } = useTafseerAudioTracks(surahNumber);
+
+  const downloadEntries = useAudioDownloadStore((s) => s.entries);
+  const downloadProgress = useAudioDownloadStore((s) => s.progress);
+  const ensureCached = useAudioDownloadStore((s) => s.ensureCached);
+  const removeDownload = useAudioDownloadStore((s) => s.remove);
+  const canDownload = Platform.OS !== 'web';
 
   const [notesByAyah, setNotesByAyah] = useState<Record<number, Note[]>>({});
 
@@ -151,37 +166,23 @@ export default function QuranReaderScreen(): React.JSX.Element {
     surahNumber,
   });
 
-  const buildTranslationTrack = (a: QuranAyah) => ({
-    id: `${a.id}::${language}`,
-    url: translationAudioUrl(surahNumber, a.ayah, language),
-    title: `${surahName} ${surahNumber}:${a.ayah} — ${language === 'ur' ? 'ترجمہ' : 'Translation'
-      }`,
-    artist: translationReciterFor(language).name,
-    arabic: a.arabic,
-    translation: translationTextFor(a) ?? undefined,
-    subtitle: `${surahName} • ${surahNumber}:${a.ayah} • ${language === 'ur' ? 'ترجمہ' : 'Translation'
-      }`,
-    surahNumber,
-  });
+  const isCurrentAyahId = (a: QuranAyah) => {
+    const id = currentTrack?.id;
+    return !!id && (id === a.id || id.startsWith(`${a.id}::`));
+  };
 
   const isAyahPlaying = (a: QuranAyah) =>
-    (currentTrack?.id === a.id || currentTrack?.id === `${a.id}::${language}`) &&
+    isCurrentAyahId(a) &&
     (playbackState === State.Playing || playbackState === State.Buffering);
 
-  const isAyahCurrent = (a: QuranAyah) =>
-    currentTrack?.id === a.id || currentTrack?.id === `${a.id}::${language}`;
+  const isAyahCurrent = (a: QuranAyah) => isCurrentAyahId(a);
 
   const translationTextFor = (a: QuranAyah) =>
     language === 'ur' ? a.urdu : a.translation;
 
   const tracks = useMemo(
-    () =>
-      (ayahs ?? []).flatMap((a: QuranAyah) =>
-        playTranslation && !!translationTextFor(a)
-          ? [buildTrack(a), buildTranslationTrack(a)]
-          : [buildTrack(a)]
-      ),
-    [ayahs, surahName, surahNumber, reciter, playTranslation, language]
+    () => (ayahs ?? []).map((a: QuranAyah) => buildTrack(a)),
+    [ayahs, surahName, surahNumber, reciter, language]
   );
 
   // Remember the surah as the last-read position when it opens.
@@ -197,6 +198,19 @@ export default function QuranReaderScreen(): React.JSX.Element {
 
   const cycleFont = () =>
     setFontModifier((p) => (p === 0 ? 4 : p === 4 ? 8 : p === 8 ? 12 : 0));
+
+  const cycleDisplayMode = () =>
+    setDisplayMode((p) =>
+      p === 'both' ? 'arabic' : p === 'arabic' ? 'translation' : 'both'
+    );
+
+  const displayModeLabel =
+    language === 'ur'
+      ? { both: 'سب', arabic: 'عربی', translation: 'ترجمہ' }[displayMode]
+      : { both: 'All', arabic: 'Ar', translation: 'Tr' }[displayMode];
+
+  const showArabic = displayMode !== 'translation';
+  const showTranslationText = displayMode !== 'arabic';
 
   const markRead = (ayah: QuranAyah) =>
     setLastRead({
@@ -214,15 +228,87 @@ export default function QuranReaderScreen(): React.JSX.Element {
   const playAyah = async (ayah: QuranAyah) => {
     markRead(ayah);
     openFullPlayer();
-    await playTrack(buildTrack(ayah));
-    await setQueue(tracks);
+    const track = buildTrack(ayah);
+    setAutoAdvanceSurah(false);
+    await playTrack(track);
+    await setQueue([track]);
   };
 
   const playSurah = async () => {
+    if (playTranslation && tilawatTracks && tilawatTracks.length > 0) {
+      await playTilawat();
+      return;
+    }
     if (tracks.length === 0) return;
     openFullPlayer();
+    setAutoAdvanceSurah(true);
     await playTrack(tracks[0]);
     await setQueue(tracks);
+  };
+
+  const buildScTrack = (track: ScTrack, kind: string, surahSync = false) => {
+    const local = useAudioDownloadStore.getState().localUri(track.trackId);
+    return {
+      id: `sc-${track.trackId}`,
+      url: local ?? scStreamUrl(track.trackId),
+      title: track.title,
+      artist: language === 'ur' ? 'شیخ سعید' : 'Sheikh Saeed',
+      arabic: '',
+      subtitle: `${surahName} • ${kind}`,
+      surahNumber,
+      durationMs: track.duration ?? undefined,
+      surahSync,
+    };
+  };
+
+  const downloadLabel = (trackId: number) => {
+    const id = String(trackId);
+    if (downloadProgress[id] != null) return `${Math.round(downloadProgress[id] * 100)}%`;
+    if (downloadEntries[id]?.done) return '✓';
+    if (downloadEntries[id]) return '↻';
+    return '⬇';
+  };
+
+  const onDownloadPress = (track: ScTrack) => {
+    const id = String(track.trackId);
+    if (downloadEntries[id]?.done) {
+      void removeDownload(track.trackId);
+    } else if (downloadProgress[id] == null) {
+      void ensureCached({ trackId: track.trackId, title: track.title }, surahNumber);
+    }
+  };
+
+  const playTilawat = async () => {
+    if (!tilawatTracks || tilawatTracks.length === 0) return;
+    openFullPlayer();
+    const kind = language === 'ur' ? 'تلاوت و ترجمہ' : 'Tilawat + Tarjuma';
+    const scTracks = tilawatTracks.map((trk) => buildScTrack(trk, kind, true));
+    setAutoAdvanceSurah(false);
+    await playTrack(scTracks[0]);
+    await setQueue(scTracks);
+  };
+
+  const playTafseerLesson = async (index: number) => {
+    if (!tafseerAudioTracks || tafseerAudioTracks.length === 0) return;
+    setTafseerAudioModalOpen(false);
+    openFullPlayer();
+    const kind = language === 'ur' ? 'تفسیر' : 'Tafseer';
+    const scTracks = tafseerAudioTracks.map((trk) => buildScTrack(trk, kind));
+    setAutoAdvanceSurah(false);
+    await playTrack(scTracks[index]);
+    await setQueue(scTracks);
+  };
+
+  const formatDuration = (ms: number | null) => {
+    if (!ms || ms <= 0) return '';
+    const total = Math.round(ms / 1000);
+    const h = Math.floor(total / 3600);
+    const m = Math.floor((total % 3600) / 60);
+    const s = total % 60;
+    if (h > 0) {
+      return `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+    }
+    return `${m}:${String(s).padStart(2, '0')}`;
   };
 
   const chooseReciter = (id: string) => {
@@ -242,16 +328,18 @@ export default function QuranReaderScreen(): React.JSX.Element {
         <View style={[styles.controlActions, isRTL && styles.rowRTL]}>
           <BackButton />
 
-          <TouchableOpacity
-            style={styles.reciterBtn}
-            onPress={() => setReciterModalOpen(true)}
-            activeOpacity={0.8}
-          >
-            <Text style={styles.reciterIcon}>🎙</Text>
-            <Text style={styles.reciterText} numberOfLines={1}>
-              {language === 'ur' ? reciter.nameUrdu : reciter.name}
-            </Text>
-          </TouchableOpacity>
+          {SHOW_RECITER_SELECTOR && (
+            <TouchableOpacity
+              style={styles.reciterBtn}
+              onPress={() => setReciterModalOpen(true)}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.reciterIcon}>🎙</Text>
+              <Text style={styles.reciterText} numberOfLines={1}>
+                {language === 'ur' ? reciter.nameUrdu : reciter.name}
+              </Text>
+            </TouchableOpacity>
+          )}
           <TouchableOpacity style={styles.fontBtn} onPress={cycleFont} activeOpacity={0.8}>
             <Text style={styles.fontIcon}>🅰</Text>
             <Text style={styles.fontText}>+{fontModifier}</Text>
@@ -276,6 +364,16 @@ export default function QuranReaderScreen(): React.JSX.Element {
               {language === 'ur' ? 'مطالعہ' : 'Read'}
             </Text>
           </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.fontBtn, displayMode !== 'both' && styles.toggleActive]}
+            onPress={cycleDisplayMode}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.fontIcon}>👁</Text>
+            <Text style={[styles.fontText, displayMode !== 'both' && styles.toggleActiveText]}>
+              {displayModeLabel}
+            </Text>
+          </TouchableOpacity>
         </View>
 
         <TouchableOpacity
@@ -285,6 +383,25 @@ export default function QuranReaderScreen(): React.JSX.Element {
         >
           <Text style={styles.playSurahText}>▶  {t('quran.playSurah')}</Text>
         </TouchableOpacity>
+
+        {!!tafseerAudioTracks?.length && (
+          <View style={[styles.scBtnRow, isRTL && styles.rowRTL]}>
+            {!!tafseerAudioTracks?.length && (
+              <TouchableOpacity
+                style={styles.scBtn}
+                onPress={() => setTafseerAudioModalOpen(true)}
+                activeOpacity={0.85}
+              >
+                <Text style={styles.scBtnText} numberOfLines={1}>
+                  📚 {language === 'ur' ? 'تفسیر آڈیو' : 'Tafseer Audio'}
+                </Text>
+                <Text style={styles.scBtnSub} numberOfLines={1}>
+                  {tafseerAudioTracks.length} {language === 'ur' ? 'دروس' : 'lessons'}
+                </Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        )}
       </View>
 
       <ScrollView
@@ -321,22 +438,49 @@ export default function QuranReaderScreen(): React.JSX.Element {
           </View>
         ) : readMode ? (
           <View style={styles.readCard}>
-            <Text
-              style={[
-                styles.readArabic,
-                {
-                  fontSize: sizeArabic + 4,
-                  lineHeight: (sizeArabic + 4) * typography.lineHeight.arabic,
-                },
-              ]}
-            >
-              {ayahs.map((ayah: QuranAyah) => (
-                <Text key={ayah.id}>
-                  {ayah.arabic}
-                  <Text style={styles.ayahMarker}>{`  ﴿${toArabicDigits(ayah.ayah)}﴾  `}</Text>
-                </Text>
-              ))}
-            </Text>
+            {displayMode === 'translation' ? (
+              <Text
+                style={[
+                  styles.translation,
+                  language === 'ur' && styles.translationUrdu,
+                  {
+                    fontSize: sizeTranslation,
+                    lineHeight:
+                      sizeTranslation *
+                      (language === 'ur'
+                        ? typography.lineHeight.urdu
+                        : typography.lineHeight.normal),
+                  },
+                ]}
+              >
+                {ayahs.map((ayah: QuranAyah) => {
+                  const tr = translationTextFor(ayah);
+                  return tr ? (
+                    <Text key={ayah.id}>
+                      {tr}
+                      <Text style={styles.ayahMarker}>{`  ﴿${toArabicDigits(ayah.ayah)}﴾  `}</Text>
+                    </Text>
+                  ) : null;
+                })}
+              </Text>
+            ) : (
+              <Text
+                style={[
+                  styles.readArabic,
+                  {
+                    fontSize: sizeArabic + 4,
+                    lineHeight: (sizeArabic + 4) * typography.lineHeight.arabic,
+                  },
+                ]}
+              >
+                {ayahs.map((ayah: QuranAyah) => (
+                  <Text key={ayah.id}>
+                    {ayah.arabic}
+                    <Text style={styles.ayahMarker}>{`  ﴿${toArabicDigits(ayah.ayah)}﴾  `}</Text>
+                  </Text>
+                ))}
+              </Text>
+            )}
           </View>
         ) : (
           ayahs.map((ayah: QuranAyah) => {
@@ -449,20 +593,22 @@ export default function QuranReaderScreen(): React.JSX.Element {
                 </View>
 
                 {/* Arabic */}
-                <AyahArabic
-                  trackId={ayah.id}
-                  plainText={ayah.arabic}
-                  textStyle={[
-                    styles.arabic,
-                    { fontSize: sizeArabic, lineHeight: sizeArabic * typography.lineHeight.arabic },
-                  ]}
-                  activeStyle={styles.arabicActive}
-                />
+                {showArabic && (
+                  <AyahArabic
+                    trackId={ayah.id}
+                    plainText={ayah.arabic}
+                    textStyle={[
+                      styles.arabic,
+                      { fontSize: sizeArabic, lineHeight: sizeArabic * typography.lineHeight.arabic },
+                    ]}
+                    activeStyle={styles.arabicActive}
+                  />
+                )}
 
-                {/* Translation (always shown with the Arabic) */}
-                {!!translation && (
+                {/* Translation */}
+                {showTranslationText && !!translation && (
                   <>
-                    <View style={styles.divider} />
+                    {showArabic && <View style={styles.divider} />}
                     <Text
                       style={[
                         styles.translation,
@@ -568,7 +714,7 @@ export default function QuranReaderScreen(): React.JSX.Element {
       </ScrollView>
 
       <Modal
-        visible={reciterModalOpen}
+        visible={SHOW_RECITER_SELECTOR && reciterModalOpen}
         transparent
         animationType="fade"
         onRequestClose={() => setReciterModalOpen(false)}
@@ -609,6 +755,73 @@ export default function QuranReaderScreen(): React.JSX.Element {
                 </TouchableOpacity>
               );
             })}
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      <Modal
+        visible={tafseerAudioModalOpen}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setTafseerAudioModalOpen(false)}
+      >
+        <Pressable
+          style={styles.modalBackdrop}
+          onPress={() => setTafseerAudioModalOpen(false)}
+        >
+          <Pressable style={styles.modalCard}>
+            <Text style={[styles.modalTitle, isRTL && styles.textRTL]}>
+              {language === 'ur'
+                ? `تفسیر — ${surahName} (شیخ سعید)`
+                : `Tafseer — ${surahName} (Sheikh Saeed)`}
+            </Text>
+            <ScrollView style={styles.lessonScroll}>
+              {(tafseerAudioTracks ?? []).map((lesson, index) => {
+                const active = currentTrack?.id === `sc-${lesson.trackId}`;
+                return (
+                  <TouchableOpacity
+                    key={lesson.trackId}
+                    style={[
+                      styles.reciterRow,
+                      active && styles.reciterRowActive,
+                      isRTL && styles.rowRTL,
+                    ]}
+                    onPress={() => playTafseerLesson(index)}
+                    activeOpacity={0.7}
+                  >
+                    <View style={styles.reciterRowTextCol}>
+                      <Text
+                        style={[
+                          styles.reciterRowName,
+                          active && styles.reciterRowNameActive,
+                          isRTL && styles.textRTL,
+                        ]}
+                        numberOfLines={2}
+                      >
+                        {lesson.title}
+                      </Text>
+                      {!!formatDuration(lesson.duration) && (
+                        <Text style={[styles.reciterRowSub, isRTL && styles.textRTL]}>
+                          {formatDuration(lesson.duration)}
+                        </Text>
+                      )}
+                    </View>
+                    {canDownload && (
+                      <TouchableOpacity
+                        style={styles.lessonDl}
+                        onPress={() => onDownloadPress(lesson)}
+                        activeOpacity={0.7}
+                      >
+                        <Text style={styles.scDlText}>
+                          {downloadLabel(lesson.trackId)}
+                        </Text>
+                      </TouchableOpacity>
+                    )}
+                    <Text style={styles.reciterCheck}>{active ? '▶' : '🔊'}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
           </Pressable>
         </Pressable>
       </Modal>
@@ -706,6 +919,60 @@ const createStyles = (theme: Theme) =>
       fontSize: typography.fontSize.sm,
       fontWeight: typography.fontWeight.bold,
       color: colors.neutral[0],
+    },
+    scBtnRow: {
+      flexDirection: 'row',
+      gap: spacing[2],
+      marginTop: spacing[2],
+    },
+    scBtn: {
+      flex: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: theme.bgCard,
+      borderRadius: borderRadius.button,
+      borderWidth: 1,
+      borderColor: theme.accentGreen,
+      paddingHorizontal: spacing[2],
+      paddingVertical: spacing[2],
+    },
+    scBtnMain: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    scDl: {
+      paddingLeft: spacing[2],
+      minWidth: 38,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    scDlText: {
+      fontSize: typography.fontSize.base,
+      color: theme.accentGreen,
+      fontWeight: typography.fontWeight.bold,
+    },
+    lessonDl: {
+      paddingHorizontal: spacing[2],
+      minWidth: 44,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    scBtnText: {
+      fontFamily: typography.fontFamily.urdu,
+      fontSize: typography.fontSize.sm,
+      fontWeight: typography.fontWeight.bold,
+      color: theme.accentGreen,
+    },
+    scBtnSub: {
+      fontFamily: typography.fontFamily.urdu,
+      fontSize: typography.fontSize.xs,
+      color: theme.textMuted,
+      marginTop: 2,
+    },
+    lessonScroll: {
+      maxHeight: 380,
     },
     scroll: {
       flex: 1,

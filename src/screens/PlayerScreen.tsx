@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   StyleSheet,
   View,
@@ -21,16 +21,25 @@ import {
 import { usePreferencesStore } from '@/store/usePreferencesStore';
 import { AyahArabic } from '@/components/AyahArabic';
 import { Icon } from '@/components/Icon';
+import { useSurahAyahs } from '@/hooks/useQuran';
+import { computeSurahAyahTimings, activeTimingIndex } from '@/utils/surahAudioTiming';
 import { useTheme, Theme } from '@/theme';
 import { colors, spacing, typography, borderRadius, shadows } from '@/tokens';
 
+const BISMILLAH = 'بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ';
+
+const toArabicDigits = (n: number): string =>
+  String(n).replace(/[0-9]/g, (d) => '٠١٢٣٤٥٦٧٨٩'[Number(d)]);
+
 function formatDuration(seconds: number): string {
   if (isNaN(seconds) || seconds < 0) return '00:00';
-  const mins = Math.floor(seconds / 60);
-  const secs = Math.floor(seconds % 60);
-  const padMins = mins < 10 ? `0${mins}` : mins;
-  const padSecs = secs < 10 ? `0${secs}` : secs;
-  return `${padMins}:${padSecs}`;
+  const total = Math.floor(seconds);
+  const hrs = Math.floor(total / 3600);
+  const mins = Math.floor((total % 3600) / 60);
+  const secs = total % 60;
+  const pad = (n: number) => (n < 10 ? `0${n}` : `${n}`);
+  if (hrs > 0) return `${hrs}:${pad(mins)}:${pad(secs)}`;
+  return `${pad(mins)}:${pad(secs)}`;
 }
 
 export default function PlayerScreen(): React.JSX.Element | null {
@@ -58,6 +67,36 @@ export default function PlayerScreen(): React.JSX.Element | null {
   const setPref = usePreferencesStore((s) => s.setPref);
 
   const timeline = usePlaybackTimeline();
+
+  const isSoundCloud = !!currentTrack?.id.startsWith('sc-') && !!currentTrack?.surahNumber;
+  const { data: surahAyahs, isLoading: surahAyahsLoading } = useSurahAyahs(
+    isSoundCloud ? currentTrack?.surahNumber : undefined
+  );
+
+  const syncEnabled = !!currentTrack?.surahSync;
+  const includeBasmala = currentTrack?.surahNumber !== 1 && currentTrack?.surahNumber !== 9;
+
+  const timings = useMemo(
+    () =>
+      syncEnabled && surahAyahs
+        ? computeSurahAyahTimings(surahAyahs, timeline.totalDuration, includeBasmala)
+        : [],
+    [syncEnabled, surahAyahs, timeline.totalDuration, includeBasmala]
+  );
+
+  const activeIndex = timings.length
+    ? activeTimingIndex(timings, timeline.displayPosition)
+    : -1;
+
+  const surahScrollRef = useRef<ScrollView>(null);
+  const ayahOffsets = useRef<Record<number, number>>({});
+
+  useEffect(() => {
+    if (activeIndex < 0) return;
+    const y = ayahOffsets.current[activeIndex];
+    if (y == null) return;
+    surahScrollRef.current?.scrollTo({ y: Math.max(0, y - 96), animated: true });
+  }, [activeIndex]);
 
   const [sliderWidth, setSliderWidth] = useState(0);
   const [isScrubbing, setIsScrubbing] = useState(false);
@@ -105,6 +144,11 @@ export default function PlayerScreen(): React.JSX.Element | null {
 
   const isPlaying = playbackState === State.Playing;
   const isBuffering = playbackState === State.Buffering;
+
+  const audioReady = timeline.totalDuration > 0;
+  const showAudioLoader =
+    !audioReady && playbackState !== State.Paused && playbackState !== State.None;
+  const controlsDisabled = showAudioLoader;
 
   const canSeek = timeline.useGlobal ? timeline.measured : timeline.totalDuration > 0;
   widthRef.current = sliderWidth || 1;
@@ -170,25 +214,78 @@ export default function PlayerScreen(): React.JSX.Element | null {
           </View>
         )}
 
+        {showAudioLoader && (
+          <View style={styles.audioLoadingBadge}>
+            <ActivityIndicator size="small" color={theme.accentGreen} />
+            <Text style={[styles.audioLoadingText, isUrdu && styles.audioLoadingTextUrdu]}>
+              {isUrdu ? 'آڈیو لوڈ ہو رہی ہے…' : 'Loading audio…'}
+            </Text>
+          </View>
+        )}
+
         <ScrollView
+          ref={surahScrollRef}
           style={styles.textScroll}
-          contentContainerStyle={styles.textScrollContent}
+          contentContainerStyle={
+            isSoundCloud ? styles.surahScrollContent : styles.textScrollContent
+          }
           showsVerticalScrollIndicator={false}
         >
-          <AyahArabic
-            trackId={currentTrack.id}
-            words={currentTrack.words}
-            plainText={currentTrack.arabic || currentTrack.title}
-            textStyle={styles.arabic}
-            activeStyle={styles.arabicActive}
-          />
+          {isSoundCloud ? (
+            surahAyahsLoading || !surahAyahs ? (
+              <ActivityIndicator size="large" color={theme.accentGreen} />
+            ) : (
+              <View style={styles.surahList}>
+                {includeBasmala && <Text style={styles.bismillah}>{BISMILLAH}</Text>}
+                {surahAyahs.map((a, i) => {
+                  const tr = isUrdu ? a.urdu : a.translation;
+                  const active = syncEnabled && i === activeIndex;
+                  return (
+                    <View
+                      key={a.id}
+                      style={[styles.ayahBlock, active && styles.ayahBlockActive]}
+                      onLayout={(e) => {
+                        ayahOffsets.current[i] = e.nativeEvent.layout.y;
+                      }}
+                    >
+                      <View style={[styles.ayahNumBadge, active && styles.ayahNumBadgeActive]}>
+                        <Text style={[styles.ayahNumText, active && styles.ayahNumTextActive]}>
+                          {toArabicDigits(a.ayah)}
+                        </Text>
+                      </View>
+                      <Text style={[styles.surahArabic, active && styles.surahArabicActive]}>
+                        {a.arabic}
+                      </Text>
+                      {!!tr && (
+                        <Text
+                          style={[styles.surahTranslation, isUrdu && styles.translationUrdu]}
+                        >
+                          {tr}
+                        </Text>
+                      )}
+                    </View>
+                  );
+                })}
+              </View>
+            )
+          ) : (
+            <>
+              <AyahArabic
+                trackId={currentTrack.id}
+                words={currentTrack.words}
+                plainText={currentTrack.arabic || currentTrack.title}
+                textStyle={styles.arabic}
+                activeStyle={styles.arabicActive}
+              />
 
-          {!!translation && (
-            <Text
-              style={[styles.translation, isUrdu && styles.translationUrdu]}
-            >
-              {translation}
-            </Text>
+              {!!translation && (
+                <Text
+                  style={[styles.translation, isUrdu && styles.translationUrdu]}
+                >
+                  {translation}
+                </Text>
+              )}
+            </>
           )}
         </ScrollView>
 
@@ -278,7 +375,10 @@ export default function PlayerScreen(): React.JSX.Element | null {
           </View>
         </View>
 
-        <View style={styles.controlsRow}>
+        <View
+          style={[styles.controlsRow, controlsDisabled && styles.controlsRowDisabled]}
+          pointerEvents={controlsDisabled ? 'none' : 'auto'}
+        >
           <TouchableOpacity
             onPress={toggleShuffle}
             activeOpacity={0.8}
@@ -376,6 +476,27 @@ const createStyles = (theme: Theme) =>
       fontWeight: typography.fontWeight.bold,
       color: theme.accentGreen,
     },
+    audioLoadingBadge: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing[2],
+      marginTop: spacing[3],
+      backgroundColor: theme.bgMuted,
+      borderRadius: borderRadius.full,
+      paddingHorizontal: spacing[4],
+      paddingVertical: 6,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: theme.border,
+    },
+    audioLoadingText: {
+      fontFamily: typography.fontFamily.english,
+      fontSize: typography.fontSize.sm,
+      color: theme.textSecondary,
+    },
+    audioLoadingTextUrdu: {
+      fontFamily: typography.fontFamily.urdu,
+      writingDirection: 'rtl',
+    },
     textScroll: {
       flex: 1,
       width: '100%',
@@ -385,6 +506,77 @@ const createStyles = (theme: Theme) =>
       flexGrow: 1,
       justifyContent: 'center',
       paddingVertical: spacing[4],
+    },
+    surahScrollContent: {
+      flexGrow: 1,
+      justifyContent: 'flex-start',
+      paddingVertical: spacing[4],
+    },
+    surahList: {
+      width: '100%',
+    },
+    bismillah: {
+      fontFamily: typography.fontFamily.arabic,
+      fontSize: typography.fontSize.arabic.md,
+      lineHeight: typography.fontSize.arabic.md * typography.lineHeight.arabic,
+      color: theme.textArabic,
+      textAlign: 'center',
+      writingDirection: 'rtl',
+      marginBottom: spacing[5],
+    },
+    ayahBlock: {
+      width: '100%',
+      paddingVertical: spacing[4],
+      paddingHorizontal: spacing[3],
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: theme.borderDivider,
+      alignItems: 'center',
+    },
+    ayahBlockActive: {
+      backgroundColor: theme.accentSoft,
+      borderRadius: borderRadius.lg,
+      borderBottomColor: 'transparent',
+    },
+    ayahNumBadge: {
+      minWidth: 30,
+      height: 24,
+      paddingHorizontal: spacing[2],
+      borderRadius: borderRadius.full,
+      backgroundColor: theme.accentSoft,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginBottom: spacing[3],
+    },
+    ayahNumBadgeActive: {
+      backgroundColor: theme.accentGreen,
+    },
+    ayahNumText: {
+      fontFamily: typography.fontFamily.arabic,
+      fontSize: typography.fontSize.sm,
+      fontWeight: typography.fontWeight.bold,
+      color: theme.accentGreen,
+    },
+    ayahNumTextActive: {
+      color: colors.neutral[0],
+    },
+    surahArabic: {
+      fontFamily: typography.fontFamily.arabic,
+      fontSize: typography.fontSize.arabic.md,
+      lineHeight: typography.fontSize.arabic.md * typography.lineHeight.arabic,
+      color: theme.textArabic,
+      textAlign: 'center',
+      writingDirection: 'rtl',
+    },
+    surahArabicActive: {
+      color: colors.gold[500],
+    },
+    surahTranslation: {
+      fontFamily: typography.fontFamily.english,
+      fontSize: typography.fontSize.base,
+      lineHeight: typography.fontSize.base * typography.lineHeight.normal,
+      color: theme.textSecondary,
+      textAlign: 'center',
+      marginTop: spacing[3],
     },
     arabic: {
       fontFamily: typography.fontFamily.arabic,
@@ -542,6 +734,9 @@ const createStyles = (theme: Theme) =>
       alignItems: 'center',
       gap: spacing[4],
       marginTop: spacing[4],
+    },
+    controlsRowDisabled: {
+      opacity: 0.45,
     },
     sideButton: {
       width: 44,

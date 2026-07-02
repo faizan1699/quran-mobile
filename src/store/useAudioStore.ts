@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { Platform } from 'react-native';
+import { Platform, Alert, AppState } from 'react-native';
 import {
   createAudioPlayer,
   setAudioModeAsync,
@@ -8,15 +8,138 @@ import {
 } from 'expo-audio';
 import { TimedWord, QuranAyah } from '@shared-types';
 import { quranService } from '@/services/quranService';
-import {
-  getReciter,
-  ayahAudioUrl,
-  translationAudioUrl,
-  translationReciterFor,
-} from '@/data/reciters';
+import { getReciter, ayahAudioUrl, ttsAudioUrl, splitForTts } from '@/data/reciters';
 import { getSurahMeta } from '@/data/surahMeta';
 import { usePreferencesStore } from '@/store/usePreferencesStore';
 import { useUserStore } from '@/store/useUserStore';
+import { useAudioDownloadStore } from '@/store/useAudioDownloadStore';
+import { useResumeStore } from '@/store/useResumeStore';
+
+type SpeechModule = {
+  speak: (text: string, options?: Record<string, unknown>) => void;
+  stop: () => void;
+  getAvailableVoicesAsync?: () => Promise<Array<{ language?: string }>>;
+};
+
+let speechModule: SpeechModule | null = null;
+let speechResolved = false;
+let ttsVoiceWarned = false;
+
+function getSpeech(): SpeechModule | null {
+  if (!speechResolved) {
+    speechResolved = true;
+    try {
+      speechModule = require('expo-speech') as SpeechModule;
+    } catch {
+      speechModule = null;
+    }
+  }
+  return speechModule;
+}
+
+function stopSpeech(): void {
+  if (Platform.OS === 'web') {
+    try {
+      getSynth()?.cancel();
+    } catch {}
+    return;
+  }
+  try {
+    getSpeech()?.stop();
+  } catch {}
+}
+
+function notifyNoVoice(langPrefix: string): void {
+  if (ttsVoiceWarned) return;
+  ttsVoiceWarned = true;
+  const isUrdu = langPrefix.startsWith('ur');
+  Alert.alert(
+    isUrdu ? 'اردو آواز دستیاب نہیں' : 'Voice not available',
+    isUrdu
+      ? 'ترجمہ سننے کے لیے اردو ٹیکسٹ ٹو اسپیچ آواز درکار ہے۔ موبائل: Settings → System → Languages → Text-to-speech (Google) → اردو ڈاؤن لوڈ کریں۔ براؤزر: اکثر ڈیسک ٹاپ براؤزرز میں اردو آواز نہیں ہوتی، فون پر آزمائیں۔'
+      : 'To hear the translation, an Urdu Text-to-speech voice must be installed on this device/browser.'
+  );
+}
+
+async function warnIfNoVoice(langPrefix: string): Promise<void> {
+  if (ttsVoiceWarned || Platform.OS === 'web') return;
+  const speech = getSpeech();
+  if (!speech?.getAvailableVoicesAsync) return;
+  try {
+    const voices = await speech.getAvailableVoicesAsync();
+    const has = voices.some((v) =>
+      (v.language || '').toLowerCase().startsWith(langPrefix.toLowerCase())
+    );
+    if (!has) notifyNoVoice(langPrefix);
+  } catch {}
+}
+
+type WebVoice = { lang?: string; name?: string };
+let webVoicesPromise: Promise<WebVoice[]> | null = null;
+
+function getSynth(): any {
+  const g = globalThis as any;
+  return g.speechSynthesis && g.SpeechSynthesisUtterance ? g.speechSynthesis : null;
+}
+
+function loadWebVoices(): Promise<WebVoice[]> {
+  const synth = getSynth();
+  if (!synth) return Promise.resolve([]);
+  const existing = synth.getVoices();
+  if (existing && existing.length) return Promise.resolve(existing);
+  if (!webVoicesPromise) {
+    webVoicesPromise = new Promise((resolve) => {
+      let done = false;
+      const finish = () => {
+        if (done) return;
+        done = true;
+        resolve(synth.getVoices() || []);
+      };
+      try {
+        synth.addEventListener('voiceschanged', finish, { once: true });
+      } catch {}
+      setTimeout(finish, 1500);
+    });
+  }
+  return webVoicesPromise;
+}
+
+async function webSpeak(
+  text: string,
+  langPrefix: string,
+  rate: number,
+  onDone: () => void,
+  onError: () => void
+): Promise<void> {
+  const synth = getSynth();
+  if (!synth) {
+    onError();
+    return;
+  }
+  const voices = await loadWebVoices();
+  const lp = langPrefix.toLowerCase();
+  const base = lp.split('-')[0];
+  const voice =
+    voices.find((v) => (v.lang || '').toLowerCase().replace('_', '-').startsWith(lp)) ||
+    voices.find((v) => (v.lang || '').toLowerCase().startsWith(base));
+  try {
+    synth.cancel();
+  } catch {}
+  const utter = new (globalThis as any).SpeechSynthesisUtterance(text);
+  if (voice) utter.voice = voice;
+  utter.lang = (voice && voice.lang) || (base === 'ur' ? 'ur-PK' : 'en-US');
+  utter.rate = rate || 1;
+  utter.onend = onDone;
+  utter.onerror = onError;
+  setTimeout(() => {
+    try {
+      synth.speak(utter);
+    } catch {
+      onError();
+    }
+  }, 130);
+  if (!voice) notifyNoVoice(langPrefix);
+}
 
 export enum PlaybackState {
   None = 'none',
@@ -27,7 +150,7 @@ export enum PlaybackState {
 
 export const State = PlaybackState;
 
-interface AudioTrackInfo {
+export interface AudioTrackInfo {
   id: string;
   url: string;
   title: string;
@@ -40,6 +163,17 @@ interface AudioTrackInfo {
   translation?: string;
   subtitle?: string;
   words?: TimedWord[];
+  tts?: boolean;
+  ttsLang?: string;
+  ttsText?: string;
+  durationMs?: number;
+  surahSync?: boolean;
+}
+
+interface ResumeSessionInput {
+  track: AudioTrackInfo;
+  queue: AudioTrackInfo[];
+  position: number;
 }
 
 interface AudioState {
@@ -52,10 +186,13 @@ interface AudioState {
   queue: AudioTrackInfo[];
   durations: Record<string, number>;
   playbackRate: number;
+  autoAdvanceSurah: boolean;
 
   playTrack: (track: AudioTrackInfo, startSeconds?: number) => Promise<void>;
   togglePlay: () => Promise<void>;
   setQueue: (tracks: AudioTrackInfo[]) => Promise<void>;
+  resumeSession: (session: ResumeSessionInput) => Promise<void>;
+  setAutoAdvanceSurah: (enabled: boolean) => void;
   skipToNext: () => Promise<void>;
   skipToPrevious: () => Promise<void>;
   toggleShuffle: () => void;
@@ -83,9 +220,33 @@ let loadWatchdog: ReturnType<typeof setTimeout> | null = null;
 let loadRetries = 0;
 let lastTrack: AudioTrackInfo | null = null;
 let lastStartSeconds = 0;
+let ttsTimer: ReturnType<typeof setInterval> | null = null;
+let ttsWatchdog: ReturnType<typeof setTimeout> | null = null;
+let resumeListenerBound = false;
 
 const LOAD_TIMEOUT_MS = 9000;
 const MAX_LOAD_RETRIES = 2;
+
+function ttsTextOf(track: AudioTrackInfo): string {
+  return (track.ttsText || track.translation || '').trim();
+}
+
+function estimateTtsSeconds(text: string, rate: number): number {
+  const words = text.trim().split(/\s+/).filter(Boolean).length;
+  const base = Math.max(2, words / 2.2);
+  return base / (rate > 0 ? rate : 1);
+}
+
+function clearTtsTimer(): void {
+  if (ttsTimer) {
+    clearInterval(ttsTimer);
+    ttsTimer = null;
+  }
+  if (ttsWatchdog) {
+    clearTimeout(ttsWatchdog);
+    ttsWatchdog = null;
+  }
+}
 
 function fetchWebDurationSeconds(url: string): Promise<number> {
   return new Promise((resolve) => {
@@ -194,16 +355,20 @@ async function buildSurahTracks(surahNumber: number): Promise<AudioTrackInfo[]> 
       surahNumber,
     });
 
-    if (playTranslation && translationTextFor(a)) {
-      tracks.push({
-        id: `${a.id}::${language}`,
-        url: translationAudioUrl(surahNumber, a.ayah, language),
-        title: `${surahName} ${surahNumber}:${a.ayah} — ${translationLabel}`,
-        artist: translationReciterFor(language).name,
-        arabic: a.arabic,
-        translation: translationTextFor(a) ?? undefined,
-        subtitle: `${surahName} • ${surahNumber}:${a.ayah} • ${translationLabel}`,
-        surahNumber,
+    const translationText = translationTextFor(a);
+    if (playTranslation && translationText) {
+      const chunks = splitForTts(translationText);
+      chunks.forEach((chunk, i) => {
+        tracks.push({
+          id: chunks.length > 1 ? `${a.id}::${language}::${i}` : `${a.id}::${language}`,
+          url: ttsAudioUrl(chunk, language),
+          title: `${surahName} ${surahNumber}:${a.ayah} — ${translationLabel}`,
+          artist: language === 'ur' ? 'اردو ترجمہ (آواز)' : 'Translation (Voice)',
+          arabic: a.arabic,
+          translation: translationText,
+          subtitle: `${surahName} • ${surahNumber}:${a.ayah} • ${translationLabel}`,
+          surahNumber,
+        });
       });
     }
   }
@@ -214,7 +379,16 @@ async function buildSurahTracks(surahNumber: number): Promise<AudioTrackInfo[]> 
 export const useAudioStore = create<AudioState>((set, get) => {
 
   const prefetchDurations = async (tracks: AudioTrackInfo[]) => {
-    const todo = tracks.filter((t) => !(get().durations[t.id] > 0));
+    const ttsTracks = tracks.filter((t) => t.tts && !(get().durations[t.id] > 0));
+    if (ttsTracks.length > 0) {
+      const rate = get().playbackRate;
+      const next = { ...get().durations };
+      for (const t of ttsTracks) {
+        next[t.id] = estimateTtsSeconds(ttsTextOf(t) || ' ', rate);
+      }
+      set({ durations: next });
+    }
+    const todo = tracks.filter((t) => !t.tts && !(get().durations[t.id] > 0));
     const CONCURRENCY = Platform.OS === 'web' ? 6 : 2;
     for (let i = 0; i < todo.length; i += CONCURRENCY) {
       const batch = todo.slice(i, i + CONCURRENCY);
@@ -248,8 +422,28 @@ export const useAudioStore = create<AudioState>((set, get) => {
     }
   };
 
+  const persistResume = () => {
+    const { currentTrack, queue, position } = get();
+    if (!currentTrack) return;
+    useResumeStore.getState().saveSession({
+      track: currentTrack,
+      queue,
+      position: Math.max(0, position),
+      updatedAt: Date.now(),
+    });
+  };
+
+  if (!resumeListenerBound) {
+    resumeListenerBound = true;
+    AppState.addEventListener('change', (next) => {
+      if (next !== 'active') persistResume();
+    });
+  }
+
   const teardownPlayer = () => {
     clearLoadWatchdog();
+    clearTtsTimer();
+    stopSpeech();
     if (statusSub) {
       try {
         statusSub.remove();
@@ -268,6 +462,9 @@ export const useAudioStore = create<AudioState>((set, get) => {
   };
 
   const maybeAutoAdvanceSurah = async (): Promise<boolean> => {
+    if (!get().autoAdvanceSurah) {
+      return false;
+    }
     if (!usePreferencesStore.getState().autoPlayNextSurah) {
       return false;
     }
@@ -392,10 +589,73 @@ export const useAudioStore = create<AudioState>((set, get) => {
     }, LOAD_TIMEOUT_MS);
   };
 
+  const startTts = (track: AudioTrackInfo) => {
+    const text = ttsTextOf(track);
+    const rate = get().playbackRate;
+    const estimated = estimateTtsSeconds(text || ' ', rate);
+    const durations = get().durations;
+    set({
+      position: 0,
+      duration: estimated,
+      playbackState: PlaybackState.Playing,
+      ...(durations[track.id] !== estimated
+        ? { durations: { ...durations, [track.id]: estimated } }
+        : {}),
+    });
+
+    const lang = track.ttsLang || 'ur';
+    const speech = Platform.OS === 'web' ? null : getSpeech();
+
+    if (!text || (Platform.OS !== 'web' && !speech)) {
+      void handleTrackFinished();
+      return;
+    }
+
+    const advanceOnce = () => {
+      if (get().currentTrack?.id === track.id) {
+        clearTtsTimer();
+        void handleTrackFinished();
+      }
+    };
+
+    clearTtsTimer();
+    ttsTimer = setInterval(() => {
+      const state = get();
+      if (!state.currentTrack || state.currentTrack.id !== track.id) {
+        clearTtsTimer();
+        return;
+      }
+      const next = Math.min(estimated, state.position + 0.25);
+      set({ position: next });
+    }, 250);
+    ttsWatchdog = setTimeout(advanceOnce, (estimated * 2 + 6) * 1000);
+
+    if (Platform.OS === 'web') {
+      void webSpeak(text, lang, rate, advanceOnce, advanceOnce);
+      return;
+    }
+
+    try {
+      speech!.speak(text, {
+        language: lang,
+        rate,
+        onDone: advanceOnce,
+        onError: advanceOnce,
+      });
+    } catch {
+      advanceOnce();
+    }
+    void warnIfNoVoice(lang);
+  };
+
   const startPlayback = (track: AudioTrackInfo, startSeconds: number) => {
     teardownPlayer();
     lastTrack = track;
     lastStartSeconds = startSeconds;
+    if (track.tts) {
+      startTts(track);
+      return;
+    }
     pendingSeekSeconds = startSeconds > 0 ? startSeconds : 0;
     player = createAudioPlayer({ uri: track.url }, { updateInterval: 100 });
     statusSub = player.addListener('playbackStatusUpdate', onPlaybackStatusUpdate);
@@ -414,6 +674,7 @@ export const useAudioStore = create<AudioState>((set, get) => {
     queue: [],
     durations: {},
     playbackRate: 1,
+    autoAdvanceSurah: true,
 
     playTrack: async (track, startSeconds = 0) => {
       try {
@@ -436,6 +697,18 @@ export const useAudioStore = create<AudioState>((set, get) => {
 
         await ensureAudioMode();
         startPlayback(track, startSeconds);
+        persistResume();
+
+        if (track.id.startsWith('sc-') && /^https?:/i.test(track.url)) {
+          const tid = Number(track.id.slice(3));
+          const withinAutoCap =
+            !track.durationMs || track.durationMs <= 90 * 60 * 1000;
+          if (tid > 0 && withinAutoCap) {
+            void useAudioDownloadStore
+              .getState()
+              .ensureCached({ trackId: tid, title: track.title }, track.surahNumber);
+          }
+        }
       } catch (error) {
         console.error('Error playing track via expo-audio:', error);
       }
@@ -444,6 +717,21 @@ export const useAudioStore = create<AudioState>((set, get) => {
     togglePlay: async () => {
       try {
         const { currentTrack, playbackState } = get();
+        if (currentTrack?.tts) {
+          if (playbackState === PlaybackState.Playing) {
+            shouldBePlaying = false;
+            continuousAdvance = false;
+            clearTtsTimer();
+            stopSpeech();
+            set({ playbackState: PlaybackState.Paused });
+            persistResume();
+          } else {
+            shouldBePlaying = true;
+            await ensureAudioMode();
+            startTts(currentTrack);
+          }
+          return;
+        }
         if (!player) {
           if (currentTrack) await get().playTrack(currentTrack, get().position);
           return;
@@ -454,6 +742,7 @@ export const useAudioStore = create<AudioState>((set, get) => {
           clearLoadWatchdog();
           player.pause();
           set({ playbackState: PlaybackState.Paused });
+          persistResume();
         } else {
           shouldBePlaying = true;
           loadRetries = 0;
@@ -469,11 +758,32 @@ export const useAudioStore = create<AudioState>((set, get) => {
 
     setQueue: async (tracks) => {
       set({ queue: tracks });
+      const known = { ...get().durations };
+      let changed = false;
+      for (const t of tracks) {
+        if (t.durationMs && t.durationMs > 0 && !(known[t.id] > 0)) {
+          known[t.id] = t.durationMs / 1000;
+          changed = true;
+        }
+      }
+      if (changed) set({ durations: known });
       if (tracks.length > 0 && !get().currentTrack) {
         await get().playTrack(tracks[0]);
       }
+      persistResume();
       scheduleDurationPrefetch(tracks);
     },
+
+    resumeSession: async (session) => {
+      try {
+        await get().playTrack(session.track, session.position);
+        await get().setQueue(session.queue);
+      } catch (error) {
+        console.error('Error resuming session:', error);
+      }
+    },
+
+    setAutoAdvanceSurah: (enabled) => set({ autoAdvanceSurah: enabled }),
 
     skipToNext: async () => {
       try {
@@ -520,6 +830,7 @@ export const useAudioStore = create<AudioState>((set, get) => {
 
     resetPlayer: async () => {
       try {
+        persistResume();
         shouldBePlaying = false;
         continuousAdvance = false;
         loadRetries = 0;
@@ -640,6 +951,11 @@ if (typeof module !== 'undefined' && module?.hot) {
       player?.pause();
       player?.remove();
     } catch {}
+    stopSpeech();
+    if (ttsTimer) {
+      clearInterval(ttsTimer);
+      ttsTimer = null;
+    }
     if (loadWatchdog) {
       clearTimeout(loadWatchdog);
       loadWatchdog = null;

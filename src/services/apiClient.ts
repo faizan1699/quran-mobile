@@ -10,7 +10,7 @@ const getDevHost = (): string | null => {
   return match ? match[1] : null;
 };
 
-const getBaseUrl = (): string => {
+export const getBaseUrl = (): string => {
   const fromEnv = process.env.EXPO_PUBLIC_API_URL?.trim();
 
   if (fromEnv && fromEnv.length > 0 && !fromEnv.includes('example.com')) {

@@ -1,12 +1,11 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { useUserStore } from '@/store/useUserStore';
 import {
-  Coordinates,
-  CalculationMethod,
-  CalculationParameters,
-  Madhab,
-  PrayerTimes,
-} from 'adhan';
-import { useUserStore, FiqhMethod } from '@/store/useUserStore';
+  buildPrayerParams,
+  computePrayerWindow,
+  formatCountdown,
+  PrayerKey,
+} from '@/lib/prayerWindow';
 
 interface FormattedPrayerTimes {
   fajr: string;
@@ -15,15 +14,25 @@ interface FormattedPrayerTimes {
   asr: string;
   maghrib: string;
   isha: string;
+  activeKey: PrayerKey | null;
+  activeRemaining: string;
+  nextKey: PrayerKey;
   nextPrayerName: string;
   nextPrayerTime: string;
+  countdown: string;
 }
 
-// Mecca fallback when the user has no location yet.
 const FALLBACK_LAT = 21.4225;
 const FALLBACK_LNG = 39.8262;
 
-// Format Date object into human-readable HH:MM AM/PM format
+const PRAYER_LABELS: Record<PrayerKey, string> = {
+  fajr: 'Fajr',
+  dhuhr: 'Dhuhr',
+  asr: 'Asr',
+  maghrib: 'Maghrib',
+  isha: 'Isha',
+};
+
 function formatTime(date: Date): string {
   return date.toLocaleTimeString([], {
     hour: '2-digit',
@@ -32,49 +41,6 @@ function formatTime(date: Date): string {
   });
 }
 
-// Map a user-facing fiqh to Adhan calculation parameters.
-// The madhab only changes the Asr time (Hanafi uses a longer shadow length);
-// Maliki/Hanbali follow the standard (Shafi) Asr height.
-export function getAdhanParams(method: FiqhMethod): CalculationParameters {
-  switch (method) {
-    case 'Hanafi': {
-      const params = CalculationMethod.MuslimWorldLeague();
-      params.madhab = Madhab.Hanafi;
-      return params;
-    }
-    case 'Shafi': {
-      const params = CalculationMethod.Egyptian();
-      params.madhab = Madhab.Shafi;
-      return params;
-    }
-    case 'Maliki': {
-      const params = CalculationMethod.MoonsightingCommittee();
-      params.madhab = Madhab.Shafi;
-      return params;
-    }
-    case 'Hanbali': {
-      const params = CalculationMethod.NorthAmerica();
-      params.madhab = Madhab.Shafi;
-      return params;
-    }
-    default: {
-      const params = CalculationMethod.MuslimWorldLeague();
-      params.madhab = Madhab.Hanafi;
-      return params;
-    }
-  }
-}
-
-// Adhan prayer codes -> the capitalised keys the UI uses for highlighting.
-const PRAYER_LABELS: Record<string, string> = {
-  fajr: 'Fajr',
-  sunrise: 'Sunrise',
-  dhuhr: 'Dhuhr',
-  asr: 'Asr',
-  maghrib: 'Maghrib',
-  isha: 'Isha',
-};
-
 const DEFAULT_TIMES: FormattedPrayerTimes = {
   fajr: '--:--',
   sunrise: '--:--',
@@ -82,60 +48,55 @@ const DEFAULT_TIMES: FormattedPrayerTimes = {
   asr: '--:--',
   maghrib: '--:--',
   isha: '--:--',
+  activeKey: null,
+  activeRemaining: '',
+  nextKey: 'fajr',
   nextPrayerName: 'Fajr',
   nextPrayerTime: '--:--',
+  countdown: '',
 };
 
-/**
- * Calculates today's prayer times from the user's stored location and fiqh.
- * Uses the pure-JS `adhan` library so the same code runs on iOS, Android and
- * the web (Expo web) without a native module.
- */
 export function usePrayerTimes(): FormattedPrayerTimes {
   const location = useUserStore((state) => state.location);
   const fiqhMethod = useUserStore((state) => state.fiqhMethod);
+  const calculationMethod = useUserStore((state) => state.calculationMethod);
+  const prayerMode = useUserStore((state) => state.prayerMode);
+  const manualTimes = useUserStore((state) => state.manualTimes);
+
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const id = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(id);
+  }, []);
 
   return useMemo<FormattedPrayerTimes>(() => {
     const lat = location?.latitude ?? FALLBACK_LAT;
     const lng = location?.longitude ?? FALLBACK_LNG;
 
     try {
-      const coordinates = new Coordinates(lat, lng);
-      const params = getAdhanParams(fiqhMethod);
-      const now = new Date();
-      const prayerTimes = new PrayerTimes(coordinates, now, params);
+      const params = buildPrayerParams(calculationMethod, fiqhMethod);
+      const window = computePrayerWindow(lat, lng, now, params, {
+        mode: prayerMode,
+        manualTimes,
+      });
 
-      const formatted = {
-        fajr: formatTime(prayerTimes.fajr),
-        sunrise: formatTime(prayerTimes.sunrise),
-        dhuhr: formatTime(prayerTimes.dhuhr),
-        asr: formatTime(prayerTimes.asr),
-        maghrib: formatTime(prayerTimes.maghrib),
-        isha: formatTime(prayerTimes.isha),
+      return {
+        fajr: formatTime(window.times.fajr),
+        sunrise: formatTime(window.times.sunrise),
+        dhuhr: formatTime(window.times.dhuhr),
+        asr: formatTime(window.times.asr),
+        maghrib: formatTime(window.times.maghrib),
+        isha: formatTime(window.times.isha),
+        activeKey: window.activeKey,
+        activeRemaining: formatCountdown(window.activeRemainingMs),
+        nextKey: window.next.key,
+        nextPrayerName: PRAYER_LABELS[window.next.key],
+        nextPrayerTime: formatTime(window.next.time),
+        countdown: formatCountdown(window.countdownMs),
       };
-
-      const nextCode = prayerTimes.nextPrayer(now);
-
-      let nextPrayerName: string;
-      let nextPrayerTime: string;
-
-      if (nextCode === 'none') {
-        // Isha has passed: next prayer is tomorrow's Fajr.
-        const tomorrow = new Date(now);
-        tomorrow.setDate(tomorrow.getDate() + 1);
-        const tomorrowTimes = new PrayerTimes(coordinates, tomorrow, params);
-        nextPrayerName = 'Fajr';
-        nextPrayerTime = formatTime(tomorrowTimes.fajr);
-      } else {
-        const time = prayerTimes.timeForPrayer(nextCode) ?? prayerTimes.fajr;
-        nextPrayerName = PRAYER_LABELS[nextCode] ?? 'Fajr';
-        nextPrayerTime = formatTime(time);
-      }
-
-      return { ...formatted, nextPrayerName, nextPrayerTime };
     } catch (error) {
       console.error('Failed to calculate prayer times:', error);
       return DEFAULT_TIMES;
     }
-  }, [location, fiqhMethod]);
+  }, [location, fiqhMethod, calculationMethod, prayerMode, manualTimes, now]);
 }

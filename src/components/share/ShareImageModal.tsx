@@ -30,7 +30,7 @@ import { ShareContent } from '@/types/share';
 type IconProps = { name: string; size?: number; color?: string };
 const Ionicons = RawIonicons as unknown as React.ComponentType<IconProps>;
 
-const WATERMARK = 'Taleem ul Quran';
+const WATERMARK = 'Dawat-e-Islam';
 
 interface ShareImageModalProps {
   visible: boolean;

@@ -23,14 +23,31 @@ export function PrayerTimesCard(): React.JSX.Element {
     : location?.name ?? t('home.tapToSetLocation');
 
   const prayers = [
-    { name: language === 'ur' ? 'فجر' : 'Fajr', time: times.fajr, key: 'Fajr' },
-    { name: language === 'ur' ? 'ظہر' : 'Dhuhr', time: times.dhuhr, key: 'Dhuhr' },
-    { name: language === 'ur' ? 'عصر' : 'Asr', time: times.asr, key: 'Asr' },
-    { name: language === 'ur' ? 'مغرب' : 'Maghrib', time: times.maghrib, key: 'Maghrib' },
-    { name: language === 'ur' ? 'عشاء' : 'Isha', time: times.isha, key: 'Isha' },
+    { name: language === 'ur' ? 'فجر' : 'Fajr', time: times.fajr, key: 'fajr' },
+    { name: language === 'ur' ? 'ظہر' : 'Dhuhr', time: times.dhuhr, key: 'dhuhr' },
+    { name: language === 'ur' ? 'عصر' : 'Asr', time: times.asr, key: 'asr' },
+    { name: language === 'ur' ? 'مغرب' : 'Maghrib', time: times.maghrib, key: 'maghrib' },
+    { name: language === 'ur' ? 'عشاء' : 'Isha', time: times.isha, key: 'isha' },
   ];
 
-  const nextPrayerKey = times.nextPrayerName;
+  const nameFor: Record<string, { ur: string; en: string }> = {
+    fajr: { ur: 'فجر', en: 'Fajr' },
+    dhuhr: { ur: 'ظہر', en: 'Dhuhr' },
+    asr: { ur: 'عصر', en: 'Asr' },
+    maghrib: { ur: 'مغرب', en: 'Maghrib' },
+    isha: { ur: 'عشاء', en: 'Isha' },
+  };
+  const label = (key: string) => (language === 'ur' ? nameFor[key]?.ur : nameFor[key]?.en) ?? key;
+  const activeName = times.activeKey ? label(times.activeKey) : '';
+  const nextName = label(times.nextKey);
+
+  const statusText = times.activeKey
+    ? language === 'ur'
+      ? `${activeName} کا وقت جاری ہے · ${times.activeRemaining} باقی`
+      : `${activeName} active · ${times.activeRemaining} left`
+    : language === 'ur'
+      ? `کوئی نماز کا وقت نہیں · ${nextName} ${times.countdown} میں`
+      : `No prayer active · ${nextName} in ${times.countdown}`;
 
   return (
     <View style={styles.container}>
@@ -49,22 +66,28 @@ export function PrayerTimesCard(): React.JSX.Element {
       <View style={[styles.card, { backgroundColor: theme.bgCardPrayer }]}>
         <View style={[styles.strip, isRTL && styles.stripRTL]}>
           {prayers.map((prayer) => {
-            const isNext = prayer.key === nextPrayerKey;
+            const isActive = prayer.key === times.activeKey;
             return (
               <View key={prayer.key} style={styles.col}>
                 <Text
-                  style={[styles.label, isNext && styles.labelActive]}
+                  style={[styles.label, isActive && styles.labelActive]}
                   numberOfLines={1}
                 >
                   {prayer.name}
                 </Text>
-                <Text style={[styles.time, isNext && styles.timeActive]} numberOfLines={1}>
+                <Text style={[styles.time, isActive && styles.timeActive]} numberOfLines={1}>
                   {prayer.time}
                 </Text>
-                {isNext ? <View style={styles.dot} /> : null}
+                {isActive ? <View style={styles.dot} /> : null}
               </View>
             );
           })}
+        </View>
+
+        <View style={styles.statusRow}>
+          <Text style={styles.statusText} numberOfLines={1}>
+            {statusText}
+          </Text>
         </View>
       </View>
     </View>
@@ -139,6 +162,19 @@ const styles = StyleSheet.create({
     borderRadius: 2.5,
     backgroundColor: colors.gold[400],
     marginTop: 1,
+  },
+  statusRow: {
+    marginTop: spacing[3],
+    paddingTop: spacing[2],
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: 'rgba(255, 255, 255, 0.15)',
+    alignItems: 'center',
+  },
+  statusText: {
+    fontFamily: typography.fontFamily.english,
+    fontSize: typography.fontSize.sm,
+    fontWeight: '600',
+    color: colors.gold[400],
   },
 });
 

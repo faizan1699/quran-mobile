@@ -37,6 +37,18 @@ export const colors = {
     light: 'rgba(0,0,0,0.1)',
     green: 'rgba(27,67,50,0.85)',
   },
+  splash: {
+    gradient: ['#1AA267', '#12905A', '#0A6E44'],
+    centerBand: '#5FD79E',
+    gold: ['#F7E6AC', '#DDBD64', '#B6923A'],
+    goldSheen: '#FBF1CE',
+    goldLine: '#C9A84C',
+    gem: ['#123A28', '#06180F'],
+    gemEdge: '#EBD292',
+    title: '#ECD290',
+    glow: '#F4E6AE',
+    ornament: '#CFEFDD',
+  },
 } as const;
 
 export const semanticColors = {

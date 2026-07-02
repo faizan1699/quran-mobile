@@ -145,7 +145,7 @@ export const usePreferencesStore = create<PreferencesState>()(
     {
       name: 'dawat-preferences-storage',
       storage: createJSONStorage(() => AsyncStorage),
-      version: 1,
+      version: 3,
       migrate: (persisted, version) => {
         const state = persisted as Partial<PreferencesState> & {
           fontScale?: FontScale;
@@ -155,6 +155,22 @@ export const usePreferencesStore = create<PreferencesState>()(
           state.urduFontScale = state.fontScale;
           state.englishFontScale = state.fontScale;
           delete state.fontScale;
+        }
+        if (version < 2 && state) {
+          if (state.arabicFont === 'Scheherazade New') {
+            state.arabicFont = DEFAULT_ARABIC_FONT;
+          }
+          if (state.urduFont === 'Noto Nastaliq Urdu') {
+            state.urduFont = DEFAULT_URDU_FONT;
+          }
+          if (state.englishFont === 'Inter') {
+            state.englishFont = DEFAULT_ENGLISH_FONT;
+          }
+        }
+        if (version < 3 && state) {
+          if (state.arabicFont === 'AlQalam Taj Nastaleeq') {
+            state.arabicFont = DEFAULT_ARABIC_FONT;
+          }
         }
         return state as PreferencesState;
       },
